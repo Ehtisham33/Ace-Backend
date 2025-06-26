@@ -41,15 +41,27 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'laravel_models',
     'chat',
+    'channels',
+    'drf_spectacular',
 ]
 
+
 REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
-    ]
+    ],
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Ace Community REST API',
+    'DESCRIPTION': 'Documentation for chat and other modules',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    
 }
 
 MIDDLEWARE = [
@@ -81,6 +93,8 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "ace_community.wsgi.application"
+ASGI_APPLICATION = 'ace_community.asgi.application'
+
 
 
 # Database
@@ -138,3 +152,13 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}
+

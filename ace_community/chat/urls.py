@@ -1,6 +1,7 @@
 from django.urls import path
-from .views import MessageListCreateAPIView
+from .views import MessageListCreateView, RecentChatsView
 
 urlpatterns = [
-    path('messages/', MessageListCreateAPIView.as_view(), name='message-list-create'),
+    path('messages/', MessageListCreateView.as_view(), name='messages'),
+    path('recent-chats/', RecentChatsView.as_view(), name='recent-chats'),
 ]
