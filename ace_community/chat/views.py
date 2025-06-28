@@ -2,9 +2,22 @@ from rest_framework import generics, permissions
 from rest_framework.permissions import AllowAny
 from .models import Message
 from .serializers import MessageSerializer, RecentChatUserSerializer
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
+
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name='with',
+            type=int,
+            location=OpenApiParameter.QUERY,
+            required=True,
+            description='User ID to get messages with'
+        )
+    ]
+)
 
 class MessageListCreateView(generics.ListCreateAPIView):
     serializer_class = MessageSerializer
