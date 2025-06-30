@@ -172,7 +172,7 @@ class Clubs(models.Model):
     id = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=64)
     short_name = models.CharField(max_length=32, blank=True, null=True)
-    user = models.ForeignKey('Users', models.DO_NOTHING)
+    user = models.ForeignKey('users', models.DO_NOTHING)
     organisation_name = models.CharField(max_length=64, blank=True, null=True)
     organisation_no = models.CharField(max_length=16, blank=True, null=True)
     parent_club = models.ForeignKey('self', models.DO_NOTHING, blank=True, null=True)
@@ -223,7 +223,7 @@ class Clubs(models.Model):
     waiver_notice = models.CharField(max_length=255, blank=True, null=True)
     require_waiver_acceptance = models.IntegerField()
     profile_submission_deadline_hours = models.IntegerField()
-    created_by = models.ForeignKey('Users', models.DO_NOTHING, db_column='created_by', related_name='clubs_created_by_set', blank=True, null=True)
+    created_by = models.ForeignKey('users', models.DO_NOTHING, db_column='created_by', related_name='clubs_created_by_set', blank=True, null=True)
     created_at = models.DateTimeField(blank=True, null=True)
     updated_at = models.DateTimeField(blank=True, null=True)
     deleted_at = models.DateTimeField(blank=True, null=True)
@@ -248,14 +248,14 @@ class ClubsAdditionalInformation(models.Model):
 
 class CoachActivityContents(models.Model):
     id = models.BigAutoField(primary_key=True)
-    coach = models.ForeignKey('Users', models.DO_NOTHING)
+    coach = models.ForeignKey('users', models.DO_NOTHING)
     type = models.CharField(max_length=5)
     file_url = models.CharField(max_length=255)
     file_extension = models.CharField(max_length=10)
     thumbnail_url = models.CharField(max_length=255, blank=True, null=True)
     title = models.CharField(max_length=255, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
-    created_by = models.ForeignKey('Users', models.DO_NOTHING, db_column='created_by', related_name='coachactivitycontents_created_by_set', blank=True, null=True)
+    created_by = models.ForeignKey('users', models.DO_NOTHING, db_column='created_by', related_name='coachactivitycontents_created_by_set', blank=True, null=True)
     created_at = models.DateTimeField(blank=True, null=True)
     updated_at = models.DateTimeField(blank=True, null=True)
 
@@ -266,7 +266,7 @@ class CoachActivityContents(models.Model):
 
 class Coaches(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey('Users', models.DO_NOTHING)
+    user = models.ForeignKey('users', models.DO_NOTHING)
     home_address = models.CharField(max_length=64, blank=True, null=True)
     emergency_contact = models.CharField(max_length=16, blank=True, null=True)
     emergency_contact_person_name = models.CharField(max_length=64, blank=True, null=True)
@@ -289,7 +289,7 @@ class Coaches(models.Model):
     status = models.CharField(max_length=18)
     reason = models.CharField(max_length=255, blank=True, null=True)
     ratings = models.DecimalField(max_digits=3, decimal_places=1)
-    created_by = models.ForeignKey('Users', models.DO_NOTHING, db_column='created_by', related_name='coaches_created_by_set', blank=True, null=True)
+    created_by = models.ForeignKey('users', models.DO_NOTHING, db_column='created_by', related_name='coaches_created_by_set', blank=True, null=True)
     created_at = models.DateTimeField(blank=True, null=True)
     updated_at = models.DateTimeField(blank=True, null=True)
     deleted_at = models.DateTimeField(blank=True, null=True)
@@ -341,7 +341,7 @@ class CourtBookingTemplates(models.Model):
     name = models.CharField(max_length=255)
     type = models.CharField(max_length=255)
     details = models.TextField()
-    user = models.ForeignKey('Users', models.DO_NOTHING)
+    user = models.ForeignKey('users', models.DO_NOTHING)
     created_at = models.DateTimeField(blank=True, null=True)
     updated_at = models.DateTimeField(blank=True, null=True)
 
@@ -354,7 +354,7 @@ class CourtBookings(models.Model):
     id = models.BigAutoField(primary_key=True)
     title = models.CharField(max_length=255)
     activity_type = models.CharField(max_length=10)
-    created_by = models.ForeignKey('Users', models.DO_NOTHING, db_column='created_by')
+    created_by = models.ForeignKey('users', models.DO_NOTHING, db_column='created_by')
     cancellation_period = models.IntegerField(blank=True, null=True)
     check_in_opens_before_hours = models.IntegerField()
     check_in_closes_after_hours = models.IntegerField()
@@ -429,7 +429,7 @@ class Courts(models.Model):
     status = models.CharField(max_length=8)
     court_location_type = models.CharField(max_length=7)
     court_type = models.CharField(max_length=6)
-    created_by = models.ForeignKey('Users', models.DO_NOTHING, db_column='created_by')
+    created_by = models.ForeignKey('users', models.DO_NOTHING, db_column='created_by')
     visibility = models.CharField(max_length=11)
     note = models.TextField(blank=True, null=True)
     buffer_time_between_slots = models.IntegerField()
@@ -502,7 +502,7 @@ class Groups(models.Model):
     visibility = models.CharField(max_length=7)
     hidden_in_feeds = models.IntegerField()
     is_approval_required = models.IntegerField()
-    created_by = models.ForeignKey('Users', models.DO_NOTHING, db_column='created_by')
+    created_by = models.ForeignKey('users', models.DO_NOTHING, db_column='created_by')
     status = models.CharField(max_length=8)
     created_at = models.DateTimeField(blank=True, null=True)
     updated_at = models.DateTimeField(blank=True, null=True)
@@ -684,7 +684,7 @@ class PlayerSportLevels(models.Model):
 
 class Players(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey('Users', models.DO_NOTHING)
+    user = models.ForeignKey('users', models.DO_NOTHING)
     age_group = models.ForeignKey(AgeGroups, models.DO_NOTHING, blank=True, null=True)
     status = models.CharField(max_length=8)
     is_premium = models.IntegerField()
@@ -781,7 +781,7 @@ class Sports(models.Model):
 
 class UserAvailabilities(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey('Users', models.DO_NOTHING)
+    user = models.ForeignKey('users', models.DO_NOTHING)
     type = models.CharField(max_length=8)
     title = models.CharField(max_length=255, blank=True, null=True)
     valid_from = models.DateTimeField(blank=True, null=True)
@@ -808,9 +808,9 @@ class UserAvailabilityDayDurationPrices(models.Model):
         db_table = 'user_availability_day_duration_prices'
 
 
-class UserSpecialties(models.Model):
+class userspecialties(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey('Users', models.DO_NOTHING)
+    user = models.ForeignKey('users', models.DO_NOTHING)
     specialty = models.ForeignKey(Specialties, models.DO_NOTHING)
 
     class Meta:
@@ -819,9 +819,9 @@ class UserSpecialties(models.Model):
         unique_together = (('user', 'specialty'),)
 
 
-class UserSports(models.Model):
+class usersports(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey('Users', models.DO_NOTHING)
+    user = models.ForeignKey('users', models.DO_NOTHING)
     sport = models.ForeignKey(Sports, models.DO_NOTHING)
 
     class Meta:
@@ -830,7 +830,7 @@ class UserSports(models.Model):
         unique_together = (('user', 'sport'),)
 
 
-class Users(models.Model):
+class users(models.Model):
     id = models.BigAutoField(primary_key=True)
     user_name = models.CharField(unique=True, max_length=20)
     uuu_id = models.CharField(unique=True, max_length=255)

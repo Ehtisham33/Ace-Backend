@@ -1,15 +1,15 @@
 from django.db import models
-from laravel_models.models import Users
+from laravel_models.models import users
 
 class Message(models.Model):
     sender = models.ForeignKey(
-        Users,
+        users,
         on_delete=models.CASCADE,
         related_name='sent_messages',
         db_column='sender_id'
     )
     receiver = models.ForeignKey(
-        Users,
+        users,
         on_delete=models.CASCADE,
         related_name='received_messages',
         db_column='receiver_id'
