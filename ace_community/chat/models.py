@@ -3,14 +3,14 @@ from laravel_models.models import Users
 
 class Message(models.Model):
     sender = models.ForeignKey(
-        Users, 
-        on_delete=models.CASCADE, 
+        Users,
+        on_delete=models.CASCADE,
         related_name='sent_messages',
         db_column='sender_id'
     )
     receiver = models.ForeignKey(
-        Users, 
-        on_delete=models.CASCADE, 
+        Users,
+        on_delete=models.CASCADE,
         related_name='received_messages',
         db_column='receiver_id'
     )
@@ -20,5 +20,4 @@ class Message(models.Model):
     is_read = models.BooleanField(default=False)
 
     class Meta:
-        db_table = 'chat_message'  # optional
         ordering = ['timestamp']
