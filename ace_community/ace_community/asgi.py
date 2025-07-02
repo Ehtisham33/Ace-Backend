@@ -13,7 +13,8 @@ from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
 import chat.routing
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'your_project_name.settings')
+# 🔧 Set your actual settings module name
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ace_community.settings')
 
 application = ProtocolTypeRouter({
     "http": get_asgi_application(),

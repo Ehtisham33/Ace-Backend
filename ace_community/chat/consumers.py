@@ -1,10 +1,12 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 
+
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        self.room_name = self.scope['url_route']['kwargs']['room_name']
-        self.room_group_name = f'chat_{self.room_name}'
+        self.room_type = self.scope['url_route']['kwargs']['room_type']
+        self.room_id = self.scope['url_route']['kwargs']['room_id']
+        self.room_group_name = f"{self.room_type}_chat_{self.room_id}"
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
@@ -14,19 +16,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         data = json.loads(text_data)
-        message = data['message']
-        sender = data['sender']
-        receiver = data['receiver']
-        typing = data.get('typing', False)
 
         await self.channel_layer.group_send(
             self.room_group_name,
             {
                 'type': 'chat_message',
-                'message': message,
-                'sender': sender,
-                'receiver': receiver,
-                'typing': typing
+                'message': data.get('message'),
+                'sender': data.get('sender'),
+                'receiver': data.get('receiver'),
+                'typing': data.get('typing', False),
+                'room_type': self.room_type,
+                'room_id': self.room_id
             }
         )
 
@@ -35,5 +35,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'message': event['message'],
             'sender': event['sender'],
             'receiver': event['receiver'],
-            'typing': event.get('typing', False)
+            'typing': event.get('typing', False),
+            'room_type': event['room_type'],
+            'room_id': event['room_id'],
         }))
