@@ -87,7 +87,12 @@ class MarketplaceMessage(models.Model):
 class Community(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    club = models.ForeignKey(Clubs, on_delete=models.CASCADE)
+    club = models.ForeignKey(
+        Clubs,
+        on_delete=models.CASCADE,
+        db_column='club_id',
+        to_field='id'
+    )
     sport = models.CharField(max_length=50)
     level = models.CharField(max_length=50)
     is_private = models.BooleanField(default=False)
@@ -95,16 +100,34 @@ class Community(models.Model):
     topic = models.CharField(max_length=100, blank=True)
     requires_approval = models.BooleanField(default=False)
     cover_image = models.ImageField(upload_to='community_covers/', null=True, blank=True)
-    created_by = models.ForeignKey(users, on_delete=models.CASCADE, related_name='communities_created')
+    created_by = models.ForeignKey(
+        users,
+        on_delete=models.CASCADE,
+        related_name='communities_created',
+        db_column='created_by',
+        to_field='id'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = 'communities'
         ordering = ['-created_at']
 
+
 class CommunityMembership(models.Model):
-    community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='memberships')
-    user = models.ForeignKey(users, on_delete=models.CASCADE)
+    community = models.ForeignKey(
+        Community,
+        on_delete=models.CASCADE,
+        related_name='memberships',
+        db_column='community_id',
+        to_field='id'
+    )
+    user = models.ForeignKey(
+        users,
+        on_delete=models.CASCADE,
+        db_column='user_id',
+        to_field='id'
+    )
     is_admin = models.BooleanField(default=False)
     is_approved = models.BooleanField(default=True)
     joined_at = models.DateTimeField(auto_now_add=True)
@@ -115,8 +138,19 @@ class CommunityMembership(models.Model):
 
 
 class CommunityMessage(models.Model):
-    community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='messages')
-    sender = models.ForeignKey(users, on_delete=models.CASCADE)
+    community = models.ForeignKey(
+        Community,
+        on_delete=models.CASCADE,
+        related_name='messages',
+        db_column='community_id',
+        to_field='id'
+    )
+    sender = models.ForeignKey(
+        users,
+        on_delete=models.CASCADE,
+        db_column='sender_id',
+        to_field='id'
+    )
     content = models.TextField(blank=True)
     file = models.FileField(upload_to='chat_files/community/', null=True, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
