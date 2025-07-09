@@ -4,7 +4,10 @@ from chat.models import (
     Message,
     ActivityMessage,
     MarketplaceItem,
-    MarketplaceMessage
+    MarketplaceMessage,
+    Community, 
+    CommunityMembership, 
+    CommunityMessage
 )
 
 
@@ -49,4 +52,22 @@ class MarketplaceMessageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MarketplaceMessage
+        fields = '__all__'
+
+
+class CommunitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Community
+        fields = '__all__'
+
+
+class CommunityMembershipSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CommunityMembership
+        fields = '__all__'
+
+
+class CommunityMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CommunityMessage
         fields = '__all__'

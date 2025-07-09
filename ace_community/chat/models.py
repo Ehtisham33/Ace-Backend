@@ -1,5 +1,5 @@
 from django.db import models
-from laravel_models.models import users, CourtBookings 
+from laravel_models.models import users, CourtBookings, Clubs
 
 
 class Message(models.Model):
@@ -82,3 +82,46 @@ class MarketplaceMessage(models.Model):
     class Meta:
         ordering = ['timestamp']
         db_table = 'marketplace_messages'
+
+
+class Community(models.Model):
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    club = models.ForeignKey(Clubs, on_delete=models.CASCADE)
+    sport = models.CharField(max_length=50)
+    level = models.CharField(max_length=50)
+    is_private = models.BooleanField(default=False)
+    location = models.CharField(max_length=255, blank=True)
+    topic = models.CharField(max_length=100, blank=True)
+    requires_approval = models.BooleanField(default=False)
+    cover_image = models.ImageField(upload_to='community_covers/', null=True, blank=True)
+    created_by = models.ForeignKey(users, on_delete=models.CASCADE, related_name='communities_created')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'communities'
+        ordering = ['-created_at']
+
+class CommunityMembership(models.Model):
+    community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='memberships')
+    user = models.ForeignKey(users, on_delete=models.CASCADE)
+    is_admin = models.BooleanField(default=False)
+    is_approved = models.BooleanField(default=True)
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'community_memberships'
+        unique_together = ('community', 'user')
+
+
+class CommunityMessage(models.Model):
+    community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='messages')
+    sender = models.ForeignKey(users, on_delete=models.CASCADE)
+    content = models.TextField(blank=True)
+    file = models.FileField(upload_to='chat_files/community/', null=True, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = 'community_messages'
+        ordering = ['timestamp']

@@ -3,7 +3,10 @@ from .models import (
     Message,
     ActivityMessage,
     MarketplaceItem,
-    MarketplaceMessage
+    MarketplaceMessage,
+    Community,
+    CommunityMembership,
+    CommunityMessage,
 )
 
 
@@ -32,4 +35,25 @@ class MarketplaceItemAdmin(admin.ModelAdmin):
 class MarketplaceMessageAdmin(admin.ModelAdmin):
     list_display = ('id', 'item', 'sender', 'receiver', 'content', 'timestamp')
     search_fields = ('sender__user_name', 'receiver__user_name', 'content', 'item__title')
+    list_filter = ('timestamp',)
+
+
+@admin.register(Community)
+class CommunityAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'club', 'sport', 'level', 'is_private', 'created_by', 'created_at')
+    search_fields = ('name', 'sport', 'level', 'created_by__user_name')
+    list_filter = ('is_private', 'created_at')
+
+
+@admin.register(CommunityMembership)
+class CommunityMembershipAdmin(admin.ModelAdmin):
+    list_display = ('id', 'community', 'user', 'is_admin', 'is_approved', 'joined_at')
+    search_fields = ('community__name', 'user__user_name')
+    list_filter = ('is_admin', 'is_approved', 'joined_at')
+
+
+@admin.register(CommunityMessage)
+class CommunityMessageAdmin(admin.ModelAdmin):
+    list_display = ('id', 'community', 'sender', 'content', 'timestamp')
+    search_fields = ('community__name', 'sender__user_name', 'content')
     list_filter = ('timestamp',)
