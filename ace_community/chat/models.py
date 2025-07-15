@@ -23,11 +23,16 @@ class Message(models.Model):
     class Meta:
         ordering = ['timestamp']
         db_table = 'messages'
+        indexes = [
+            models.Index(fields=['timestamp']),
+            models.Index(fields=['sender']),
+            models.Index(fields=['receiver']),
+        ]
 
 
 class ActivityMessage(models.Model):
     activity = models.ForeignKey(
-        CourtBookings, 
+        CourtBookings,
         on_delete=models.CASCADE,
         db_column='activity_id',
         related_name='activity_messages'
@@ -45,6 +50,11 @@ class ActivityMessage(models.Model):
     class Meta:
         ordering = ['timestamp']
         db_table = 'activity_messages'
+        indexes = [
+            models.Index(fields=['timestamp']),
+            models.Index(fields=['activity']),
+            models.Index(fields=['sender']),
+        ]
 
 
 class MarketplaceItem(models.Model):
@@ -82,6 +92,12 @@ class MarketplaceMessage(models.Model):
     class Meta:
         ordering = ['timestamp']
         db_table = 'marketplace_messages'
+        indexes = [
+            models.Index(fields=['timestamp']),
+            models.Index(fields=['item']),
+            models.Index(fields=['sender']),
+            models.Index(fields=['receiver']),
+        ]
 
 
 class Community(models.Model):
@@ -159,3 +175,8 @@ class CommunityMessage(models.Model):
     class Meta:
         db_table = 'community_messages'
         ordering = ['timestamp']
+        indexes = [
+            models.Index(fields=['timestamp']),
+            models.Index(fields=['community']),
+            models.Index(fields=['sender']),
+        ]

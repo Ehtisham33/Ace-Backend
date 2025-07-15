@@ -3,7 +3,7 @@
 #   * Rearrange models' order
 #   * Make sure each model has one field with primary_key=True
 #   * Make sure each ForeignKey and OneToOneField has `on_delete` set to the desired behavior
-#   * Remove `managed = True` lines if you wish to allow Django to create, modify, and delete the table
+#   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
 # Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
 
@@ -17,7 +17,7 @@ class AgeGroups(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'age_groups'
 
 
@@ -27,7 +27,7 @@ class AvailabilityDayCourts(models.Model):
     court = models.ForeignKey('Courts', models.CASCADE)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'availability_day_courts'
 
 
@@ -37,7 +37,7 @@ class AvailabilityDayDurations(models.Model):
     duration = models.PositiveSmallIntegerField()
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'availability_day_durations'
 
 
@@ -52,7 +52,7 @@ class AvailabilityDayIntervals(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'availability_day_intervals'
 
 
@@ -64,7 +64,7 @@ class AvailabilityDays(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'availability_days'
 
 
@@ -74,7 +74,7 @@ class Cache(models.Model):
     expiration = models.IntegerField()
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'cache'
 
 
@@ -84,7 +84,7 @@ class CacheLocks(models.Model):
     expiration = models.IntegerField()
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'cache_locks'
 
 
@@ -93,7 +93,7 @@ class CategoryGroup(models.Model):
     group = models.ForeignKey('Groups', models.CASCADE)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'category_group'
         unique_together = (('group_category', 'group'),)
 
@@ -108,7 +108,7 @@ class ClubBannerImages(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'club_banner_images'
 
 
@@ -123,7 +123,7 @@ class ClubCheckInSettings(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'club_check_in_settings'
 
 
@@ -136,7 +136,7 @@ class ClubLevelSystems(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'club_level_systems'
 
 
@@ -151,7 +151,7 @@ class ClubOpeningHours(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'club_opening_hours'
 
 
@@ -164,7 +164,7 @@ class ClubSports(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'club_sports'
 
 
@@ -229,7 +229,7 @@ class Clubs(models.Model):
     deleted_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'clubs'
 
 
@@ -242,7 +242,7 @@ class ClubsAdditionalInformation(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'clubs_additional_information'
 
 
@@ -260,7 +260,7 @@ class CoachActivityContents(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'coach_activity_contents'
 
 
@@ -295,7 +295,7 @@ class Coaches(models.Model):
     deleted_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'coaches'
 
 
@@ -307,7 +307,7 @@ class CourtBookingBanners(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'court_booking_banners'
 
 
@@ -319,7 +319,7 @@ class CourtBookingCourts(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'court_booking_courts'
 
 
@@ -332,7 +332,7 @@ class CourtBookingDescriptions(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'court_booking_descriptions'
 
 
@@ -346,7 +346,7 @@ class CourtBookingTemplates(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'court_booking_templates'
 
 
@@ -402,7 +402,7 @@ class CourtBookings(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'court_bookings'
 
 
@@ -414,7 +414,7 @@ class CourtSlotDurations(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'court_slot_durations'
 
 
@@ -437,7 +437,7 @@ class Courts(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'courts'
 
 
@@ -456,7 +456,7 @@ class Currencies(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'currencies'
 
 
@@ -470,7 +470,7 @@ class FailedJobs(models.Model):
     failed_at = models.DateTimeField()
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'failed_jobs'
 
 
@@ -484,7 +484,7 @@ class GroupCategories(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'group_categories'
 
 
@@ -508,7 +508,7 @@ class Groups(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'groups'
 
 
@@ -525,7 +525,7 @@ class JobBatches(models.Model):
     finished_at = models.IntegerField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'job_batches'
 
 
@@ -539,7 +539,7 @@ class Jobs(models.Model):
     created_at = models.PositiveIntegerField()
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'jobs'
 
 
@@ -552,7 +552,7 @@ class Levels(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'levels'
 
 
@@ -561,7 +561,7 @@ class Migrations(models.Model):
     batch = models.IntegerField()
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'migrations'
 
 
@@ -571,7 +571,7 @@ class ModelHasPermissions(models.Model):
     model_id = models.PositiveBigIntegerField()
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'model_has_permissions'
         unique_together = (('permission', 'model_id', 'model_type'),)
 
@@ -582,7 +582,7 @@ class ModelHasRoles(models.Model):
     model_id = models.PositiveBigIntegerField()
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'model_has_roles'
         unique_together = (('role', 'model_id', 'model_type'),)
 
@@ -599,7 +599,7 @@ class OauthAccessTokens(models.Model):
     expires_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'oauth_access_tokens'
 
 
@@ -612,7 +612,7 @@ class OauthAuthCodes(models.Model):
     expires_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'oauth_auth_codes'
 
 
@@ -630,7 +630,7 @@ class OauthClients(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'oauth_clients'
 
 
@@ -641,7 +641,7 @@ class OauthPersonalAccessClients(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'oauth_personal_access_clients'
 
 
@@ -652,7 +652,7 @@ class OauthRefreshTokens(models.Model):
     expires_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'oauth_refresh_tokens'
 
 
@@ -664,7 +664,7 @@ class Permissions(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'permissions'
         unique_together = (('name', 'guard_name'),)
 
@@ -678,7 +678,7 @@ class PlayerSportLevels(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'player_sport_levels'
 
 
@@ -701,7 +701,7 @@ class Players(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'players'
 
 
@@ -715,7 +715,7 @@ class QuestionnaireResponses(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'questionnaire_responses'
 
 
@@ -728,7 +728,7 @@ class Questionnaires(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'questionnaires'
 
 
@@ -737,7 +737,7 @@ class RoleHasPermissions(models.Model):
     role = models.ForeignKey('Roles', models.CASCADE)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'role_has_permissions'
         unique_together = (('permission', 'role'),)
 
@@ -750,7 +750,7 @@ class Roles(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'roles'
         unique_together = (('name', 'guard_name'),)
 
@@ -762,7 +762,7 @@ class Specialties(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'specialties'
 
 
@@ -775,7 +775,7 @@ class Sports(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'sports'
 
 
@@ -793,7 +793,7 @@ class UserAvailabilities(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'user_availabilities'
 
 
@@ -804,7 +804,7 @@ class UserAvailabilityDayDurationPrices(models.Model):
     price = models.DecimalField(max_digits=8, decimal_places=2)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'user_availability_day_duration_prices'
 
 
@@ -814,7 +814,7 @@ class userspecialties(models.Model):
     specialty = models.ForeignKey(Specialties, models.CASCADE)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'user_specialties'
         unique_together = (('user', 'specialty'),)
 
@@ -825,7 +825,7 @@ class usersports(models.Model):
     sport = models.ForeignKey(Sports, models.CASCADE)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'user_sports'
         unique_together = (('user', 'sport'),)
 
@@ -862,5 +862,5 @@ class users(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = 'users'

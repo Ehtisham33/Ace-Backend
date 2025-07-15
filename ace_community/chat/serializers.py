@@ -12,9 +12,16 @@ from chat.models import (
 
 
 class MessageSerializer(serializers.ModelSerializer):
+    file_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Message
         fields = '__all__'
+        read_only_fields = ['timestamp', 'is_read', 'sender']
+
+    def get_file_url(self, obj):
+        request = self.context.get('request')
+        return request.build_absolute_uri(obj.file.url) if obj.file and request else None
 
 
 class RecentChatUserSerializer(serializers.ModelSerializer):
@@ -25,20 +32,30 @@ class RecentChatUserSerializer(serializers.ModelSerializer):
         fields = ['id', 'user_name', 'last_message']
 
     def get_last_message(self, user):
-        request_user_id = self.context['request'].headers.get("X-User-ID")
-        if not request_user_id:
+        try:
+            request_user_id = int(self.context['request'].headers.get("X-User-ID"))
+        except (TypeError, ValueError):
             return None
+
         msg = Message.objects.filter(
             sender_id__in=[request_user_id, user.id],
             receiver_id__in=[request_user_id, user.id]
         ).order_by('-timestamp').first()
-        return MessageSerializer(msg).data if msg else None
+
+        return MessageSerializer(msg, context=self.context).data if msg else None
 
 
 class ActivityMessageSerializer(serializers.ModelSerializer):
+    file_url = serializers.SerializerMethodField()
+
     class Meta:
         model = ActivityMessage
         fields = '__all__'
+        read_only_fields = ['timestamp', 'is_read', 'sender']
+
+    def get_file_url(self, obj):
+        request = self.context.get('request')
+        return request.build_absolute_uri(obj.file.url) if obj.file and request else None
 
 
 class MarketplaceItemSerializer(serializers.ModelSerializer):
@@ -48,11 +65,17 @@ class MarketplaceItemSerializer(serializers.ModelSerializer):
 
 
 class MarketplaceMessageSerializer(serializers.ModelSerializer):
+    file_url = serializers.SerializerMethodField()
     item = MarketplaceItemSerializer(read_only=True)
 
     class Meta:
         model = MarketplaceMessage
         fields = '__all__'
+        read_only_fields = ['timestamp', 'is_read', 'sender']
+
+    def get_file_url(self, obj):
+        request = self.context.get('request')
+        return request.build_absolute_uri(obj.file.url) if obj.file and request else None
 
 
 class CommunitySerializer(serializers.ModelSerializer):
@@ -68,6 +91,13 @@ class CommunityMembershipSerializer(serializers.ModelSerializer):
 
 
 class CommunityMessageSerializer(serializers.ModelSerializer):
+    file_url = serializers.SerializerMethodField()
+
     class Meta:
         model = CommunityMessage
         fields = '__all__'
+        read_only_fields = ['timestamp', 'is_read', 'sender']
+
+    def get_file_url(self, obj):
+        request = self.context.get('request')
+        return request.build_absolute_uri(obj.file.url) if obj.file and request else None
