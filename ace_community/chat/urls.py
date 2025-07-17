@@ -15,7 +15,21 @@
 #     CommunityMessageListCreateView,
 #     CommunityChatThreadsView,
 #     MyCreatedCommunitiesView,
-#     ExploreCommunitiesView
+#     ExploreCommunitiesView,
+#     MyFavoriteCommunitiesView,
+#     ToggleFavoriteCommunityView,
+#     MyFollowersView,
+#     UnfollowUserView,
+#     MyFollowingView,
+#     FollowUserView,
+#     CommunityFeedView,
+#     PostCommentListCreateView,
+#     TogglePostLikeView,
+#     CommunityDocumentsView,
+#     CommunityPhotosView,
+#     CommunityVideosView,
+#     LeaveCommunityView,
+#     ReportCommunityView
 # )
 
 # urlpatterns = [
@@ -42,4 +56,18 @@
 #     path('communities/chat-threads/', CommunityChatThreadsView.as_view(), name='community-chat-threads'),
 #     path('community/my-created/', MyCreatedCommunitiesView.as_view(), name='my-created-communities'),
 #     path('community/explore/', ExploreCommunitiesView.as_view(), name='explore-communities'),
+#     path('communities/favorites/', MyFavoriteCommunitiesView.as_view(), name='favorite-communities'),
+#     path('communities/<int:community_id>/toggle-favorite/', ToggleFavoriteCommunityView.as_view(), name='toggle-favorite'),
+#     path('users/followers/', MyFollowersView.as_view(), name='my-followers'),
+#     path('users/chat-eligible-followers/', MyFollowingView.as_view(), name='chat-eligible-followers'),
+#     path('users/<int:user_id>/follow/', FollowUserView.as_view(), name='follow-user'),
+#     path('users/<int:user_id>/unfollow/', UnfollowUserView.as_view(), name='unfollow-user'),
+#     path('communities/<int:community_id>/feed/', CommunityFeedView.as_view(), name='community-feed'),
+#     path('posts/<int:post_id>/like/', TogglePostLikeView.as_view(), name='post-like-toggle'),
+#     path('posts/<int:post_id>/comments/', PostCommentListCreateView.as_view(), name='post-comments'),
+#     path('communities/<int:community_id>/media/photos/', CommunityPhotosView.as_view(), name='community-photos'),
+#     path('communities/<int:community_id>/media/videos/', CommunityVideosView.as_view(), name='community-videos'),
+#     path('communities/<int:community_id>/media/documents/', CommunityDocumentsView.as_view(), name='community-documents'),
+#     path('communities/<int:community_id>/leave/', LeaveCommunityView.as_view(), name='leave-community'),
+#     path('communities/<int:community_id>/report/', ReportCommunityView.as_view(), name='report-community')
 # ]

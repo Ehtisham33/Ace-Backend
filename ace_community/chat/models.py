@@ -180,3 +180,105 @@
 #             models.Index(fields=['community']),
 #             models.Index(fields=['sender']),
 #         ]
+
+
+# class CommunityFavorite(models.Model):
+#     user = models.ForeignKey(users, on_delete=models.CASCADE)
+#     community = models.ForeignKey(Community, on_delete=models.CASCADE)
+#     favorited_at = models.DateTimeField(auto_now_add=True)
+
+#     class Meta:
+#         unique_together = ('user', 'community')
+#         db_table = 'community_favorites'
+
+
+# class UserFollower(models.Model):
+#     follower = models.ForeignKey(users, related_name='following', on_delete=models.CASCADE)
+#     following = models.ForeignKey(users, related_name='followers', on_delete=models.CASCADE)
+#     created_at = models.DateTimeField(auto_now_add=True)
+
+#     class Meta:
+#         unique_together = ('follower', 'following')
+
+
+# class CommunityPost(models.Model):
+#     community = models.ForeignKey(
+#         Community, on_delete=models.CASCADE, related_name='posts'
+#     )
+#     author = models.ForeignKey(
+#         users, on_delete=models.CASCADE
+#     )
+#     content = models.TextField()
+#     image = models.ImageField(
+#         upload_to='community_posts/', null=True, blank=True
+#     )
+#     video = models.FileField(
+#         upload_to='community_posts/videos/', null=True, blank=True
+#     )
+#     file = models.FileField(upload_to='community_documents/', null=True, blank=True)
+#     category = models.CharField(max_length=100, blank=True)
+#     tags = models.CharField(max_length=255, blank=True) 
+#     is_private = models.BooleanField(default=False)
+#     location = models.CharField(max_length=255, blank=True)
+#     created_at = models.DateTimeField(auto_now_add=True)
+
+#     class Meta:
+#         ordering = ['-created_at']
+#         db_table = 'community_posts'
+#         indexes = [
+#             models.Index(fields=['community']),
+#             models.Index(fields=['author']),
+#             models.Index(fields=['created_at']),
+#             models.Index(fields=['category']),
+#             models.Index(fields=['is_private']),
+#         ]
+
+#     def __str__(self):
+#         return f"{self.author.user_name}'s post in {self.community.name}"
+
+
+# class PostLike(models.Model):
+#     post = models.ForeignKey(CommunityPost, on_delete=models.CASCADE, related_name='likes')
+#     user = models.ForeignKey(users, on_delete=models.CASCADE)
+#     liked_at = models.DateTimeField(auto_now_add=True)
+
+#     class Meta:
+#         unique_together = ('post', 'user')
+#         db_table = 'post_likes'
+#         indexes = [
+#             models.Index(fields=['post']),
+#             models.Index(fields=['user']),
+#         ]
+
+# class PostComment(models.Model):
+#     post = models.ForeignKey(CommunityPost, on_delete=models.CASCADE, related_name='comments')
+#     user = models.ForeignKey(users, on_delete=models.CASCADE)
+#     content = models.TextField()
+#     created_at = models.DateTimeField(auto_now_add=True)
+
+#     class Meta:
+#         ordering = ['-created_at']
+#         db_table = 'post_comments'
+#         indexes = [
+#             models.Index(fields=['post']),
+#             models.Index(fields=['user']),
+#             models.Index(fields=['created_at']),
+#         ]
+
+
+# class CommunityReport(models.Model):
+#     community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='reports')
+#     reported_by = models.ForeignKey(users, on_delete=models.CASCADE)
+#     reason = models.TextField()
+#     created_at = models.DateTimeField(auto_now_add=True)
+
+#     class Meta:
+#         db_table = 'community_reports'
+#         ordering = ['-created_at']
+#         indexes = [
+#             models.Index(fields=['community']),
+#             models.Index(fields=['reported_by']),
+#         ]
+
+#     def __str__(self):
+#         return f"Report by {self.reported_by.user_name} on {self.community.name}"

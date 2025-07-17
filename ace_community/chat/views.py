@@ -13,6 +13,12 @@
 #     Community, 
 #     CommunityMembership, 
 #     CommunityMessage,
+#     CommunityFavorite,
+#     UserFollower,
+#     CommunityPost,
+#     PostLike,
+#     PostComment,
+#     CommunityReport
 # )
 # from .serializers import (
 #     MessageSerializer,
@@ -23,6 +29,11 @@
 #     CommunitySerializer,
 #     CommunityMembershipSerializer,
 #     CommunityMessageSerializer,
+#     CommunityFavoriteSerializer,
+#     UserFollowerSerializer,
+#     CommunityPostSerializer,
+#     PostCommentSerializer,
+#     CommunityReportSerializer
 # )
 
 # @extend_schema_view(
@@ -158,20 +169,35 @@
 #         serializer.save(sender=self.request.user)
 
 # @extend_schema_view(
-#     get=extend_schema(summary="List all communities"),
+#     get=extend_schema(
+#         summary="List all communities",
+#         parameters=[
+#             OpenApiParameter(name="club_id", type=int, location=OpenApiParameter.QUERY, required=False, description="Filter by club ID"),
+#             OpenApiParameter(name="sport", type=str, location=OpenApiParameter.QUERY, required=False, description="Filter by sport (e.g. Padel)")
+#         ]
+#     ),
 #     post=extend_schema(summary="Create a new community"),
 # )
+
+
 # class CommunityListCreateView(generics.ListCreateAPIView):
 #     queryset = Community.objects.all()
 #     serializer_class = CommunitySerializer
 #     permission_classes = [permissions.IsAuthenticated]
 
 #     def get_queryset(self):
-#         club_id = self.request.query_params.get('club_id')
-#         return Community.objects.filter(club_id=club_id) if club_id else Community.objects.all()
+#         club_id = self.request.query_params.get("club_id")
+#         sport = self.request.query_params.get("sport")
+#         qs = Community.objects.all()
+#         if club_id:
+#             qs = qs.filter(club_id=club_id)
+#         if sport:
+#             qs = qs.filter(sport__iexact=sport)
+#         return qs
 
 #     def perform_create(self, serializer):
 #         serializer.save(created_by=self.request.user)
+
 
 # @extend_schema(summary="Get, update or delete a specific community")
 # class CommunityDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -243,7 +269,7 @@
 
 # @extend_schema(
 #     summary="Explore Communities",
-#     description="Communities in selected club that user has not joined.",
+#     description="Communities (public or private) created by players in the selected club that the user has not joined.",
 #     parameters=[
 #         OpenApiParameter(name="club_id", required=True, type=int, location=OpenApiParameter.QUERY)
 #     ],
@@ -255,6 +281,190 @@
 #     permission_classes = [permissions.IsAuthenticated]
 
 #     def get_queryset(self):
-
 #         club_id = self.request.query_params.get("club_id")
-#         return Community.objects.filter(club_id=club_id).exclude(memberships__user__id=self.request.user.id)
+#         qs = Community.objects.filter(
+#             created_by__user_type='player'
+#         )
+#         if club_id:
+#             qs = qs.filter(club_id=club_id)
+#         return qs.exclude(memberships__user__id=self.request.user.id)
+
+
+# class MyFavoriteCommunitiesView(generics.ListAPIView):
+#     serializer_class = CommunitySerializer
+#     permission_classes = [permissions.IsAuthenticated]
+
+#     def get_queryset(self):
+#         return Community.objects.filter(
+#             communityfavorite__user=self.request.user
+#         )
+
+# class ToggleFavoriteCommunityView(APIView):
+#     permission_classes = [permissions.IsAuthenticated]
+
+#     def post(self, request, community_id):
+#         obj, created = CommunityFavorite.objects.get_or_create(
+#             user=request.user,
+#             community_id=community_id
+#         )
+#         if not created:
+#             obj.delete()
+#             return Response({"status": "removed"})
+#         return Response({"status": "added"})
+
+
+# class MyFollowersView(generics.ListAPIView):
+#     serializer_class = UserFollowerSerializer
+#     permission_classes = [permissions.IsAuthenticated]
+
+#     def get_queryset(self):
+#         return UserFollower.objects.filter(following=self.request.user)
+
+
+# class MyFollowingView(generics.ListAPIView):
+#     serializer_class = RecentChatUserSerializer
+#     permission_classes = [permissions.IsAuthenticated]
+
+#     def get_queryset(self):
+#         query = self.request.query_params.get("q", "")
+#         user = self.request.user
+
+#         # Get users I follow
+#         following_ids = UserFollower.objects.filter(
+#             follower=user
+#         ).values_list('following_id', flat=True)
+
+#         qs = users.objects.filter(id__in=following_ids)
+#         if query:
+#             qs = qs.filter(user_name__icontains=query)
+#         return qs
+
+
+# class FollowUserView(APIView):
+#     permission_classes = [permissions.IsAuthenticated]
+
+#     def post(self, request, user_id):
+#         if request.user.id == user_id:
+#             return Response({"error": "You cannot follow yourself."}, status=400)
+
+#         obj, created = UserFollower.objects.get_or_create(
+#             follower=request.user,
+#             following_id=user_id
+#         )
+#         if not created:
+#             return Response({"status": "already following"})
+#         return Response({"status": "followed"})
+
+
+# class UnfollowUserView(APIView):
+#     permission_classes = [permissions.IsAuthenticated]
+
+#     def post(self, request, user_id):
+#         deleted, _ = UserFollower.objects.filter(
+#             follower=request.user,
+#             following_id=user_id
+#         ).delete()
+#         if deleted:
+#             return Response({"status": "unfollowed"})
+#         return Response({"status": "not following"}, status=404)
+
+
+# class CommunityFeedView(generics.ListCreateAPIView):
+#     serializer_class = CommunityPostSerializer
+#     permission_classes = [permissions.IsAuthenticated]
+
+#     def get_queryset(self):
+#         community_id = self.kwargs.get("community_id")
+#         return CommunityPost.objects.filter(
+#             community_id=community_id
+#         ).order_by('-created_at')
+
+#     def perform_create(self, serializer):
+#         serializer.save(
+#             author=self.request.user,
+#             community_id=self.kwargs.get("community_id")
+#         )
+
+
+# class TogglePostLikeView(APIView):
+#     permission_classes = [permissions.IsAuthenticated]
+
+#     def post(self, request, post_id):
+#         obj, created = PostLike.objects.get_or_create(
+#             user=request.user,
+#             post_id=post_id
+#         )
+#         if not created:
+#             obj.delete()
+#             return Response({"status": "unliked"})
+#         return Response({"status": "liked"})
+
+
+# # ✅ List/Create Comments for a post
+# class PostCommentListCreateView(generics.ListCreateAPIView):
+#     serializer_class = PostCommentSerializer
+#     permission_classes = [permissions.IsAuthenticated]
+
+#     def get_queryset(self):
+#         return PostComment.objects.filter(post_id=self.kwargs['post_id'])
+
+#     def perform_create(self, serializer):
+#         serializer.save(user=self.request.user, post_id=self.kwargs['post_id'])
+
+
+# class CommunityPhotosView(generics.ListAPIView):
+#     serializer_class = CommunityPostSerializer
+#     permission_classes = [permissions.IsAuthenticated]
+
+#     def get_queryset(self):
+#         return CommunityPost.objects.filter(
+#             community_id=self.kwargs["community_id"],
+#             image__isnull=False
+#         ).exclude(image='')
+
+
+# class CommunityVideosView(generics.ListAPIView):
+#     serializer_class = CommunityPostSerializer
+#     permission_classes = [permissions.IsAuthenticated]
+
+#     def get_queryset(self):
+#         return CommunityPost.objects.filter(
+#             community_id=self.kwargs["community_id"],
+#             video__isnull=False
+#         ).exclude(video='')
+
+
+# class CommunityDocumentsView(generics.ListAPIView):
+#     serializer_class = CommunityPostSerializer
+#     permission_classes = [permissions.IsAuthenticated]
+
+#     def get_queryset(self):
+#         return CommunityPost.objects.filter(
+#             community_id=self.kwargs["community_id"],
+#             file__isnull=False
+#         ).exclude(file='')
+    
+
+# class LeaveCommunityView(APIView):
+#     permission_classes = [permissions.IsAuthenticated]
+
+#     def post(self, request, community_id):
+#         deleted, _ = CommunityMembership.objects.filter(
+#             community_id=community_id,
+#             user=request.user
+#         ).delete()
+
+#         if deleted:
+#             return Response({"status": "left"})
+#         return Response({"status": "not a member"}, status=400)
+
+
+# class ReportCommunityView(generics.CreateAPIView):
+#     serializer_class = CommunityReportSerializer
+#     permission_classes = [permissions.IsAuthenticated]
+
+#     def perform_create(self, serializer):
+#         serializer.save(
+#             reported_by=self.request.user,
+#             community_id=self.kwargs['community_id']
+#         )

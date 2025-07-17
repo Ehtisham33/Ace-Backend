@@ -1,1 +1,0 @@
-# laravel models load here
