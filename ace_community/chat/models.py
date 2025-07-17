@@ -1,16 +1,16 @@
 from django.db import models
-from laravel_models.models import users, CourtBookings, Clubs
+from laravel_models.models import Users, CourtBookings, Clubs
 
 
 class Message(models.Model):
     sender = models.ForeignKey(
-        users,
+        Users,
         on_delete=models.CASCADE,
         related_name='sent_messages',
         db_column='sender_id'
     )
     receiver = models.ForeignKey(
-        users,
+        Users,
         on_delete=models.CASCADE,
         related_name='received_messages',
         db_column='receiver_id'
@@ -38,7 +38,7 @@ class ActivityMessage(models.Model):
         related_name='activity_messages'
     )
     sender = models.ForeignKey(
-        users,
+        Users,
         on_delete=models.CASCADE,
         related_name='activity_sent_messages'
     )
@@ -75,12 +75,12 @@ class MarketplaceMessage(models.Model):
         related_name='messages'
     )
     sender = models.ForeignKey(
-        users,
+        Users,
         on_delete=models.CASCADE,
         related_name='marketplace_sent_messages'
     )
     receiver = models.ForeignKey(
-        users,
+        Users,
         on_delete=models.CASCADE,
         related_name='marketplace_received_messages'
     )
@@ -117,7 +117,7 @@ class Community(models.Model):
     requires_approval = models.BooleanField(default=False)
     cover_image = models.ImageField(upload_to='community_covers/', null=True, blank=True)
     created_by = models.ForeignKey(
-        users,
+        Users,
         on_delete=models.CASCADE,
         related_name='communities_created',
         db_column='created_by',
@@ -139,7 +139,7 @@ class CommunityMembership(models.Model):
         to_field='id'
     )
     user = models.ForeignKey(
-        users,
+        Users,
         on_delete=models.CASCADE,
         db_column='user_id',
         to_field='id'
@@ -162,7 +162,7 @@ class CommunityMessage(models.Model):
         to_field='id'
     )
     sender = models.ForeignKey(
-        users,
+        Users,
         on_delete=models.CASCADE,
         db_column='sender_id',
         to_field='id'
@@ -183,7 +183,7 @@ class CommunityMessage(models.Model):
 
 
 class CommunityFavorite(models.Model):
-    user = models.ForeignKey(users, on_delete=models.CASCADE)
+    user = models.ForeignKey(Users, on_delete=models.CASCADE)
     community = models.ForeignKey(Community, on_delete=models.CASCADE)
     favorited_at = models.DateTimeField(auto_now_add=True)
 
@@ -193,8 +193,8 @@ class CommunityFavorite(models.Model):
 
 
 class UserFollower(models.Model):
-    follower = models.ForeignKey(users, related_name='following', on_delete=models.CASCADE)
-    following = models.ForeignKey(users, related_name='followers', on_delete=models.CASCADE)
+    follower = models.ForeignKey(Users, related_name='following', on_delete=models.CASCADE)
+    following = models.ForeignKey(Users, related_name='followers', on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -206,7 +206,7 @@ class CommunityPost(models.Model):
         Community, on_delete=models.CASCADE, related_name='posts'
     )
     author = models.ForeignKey(
-        users, on_delete=models.CASCADE
+        Users, on_delete=models.CASCADE
     )
     content = models.TextField()
     image = models.ImageField(
@@ -239,7 +239,7 @@ class CommunityPost(models.Model):
 
 class PostLike(models.Model):
     post = models.ForeignKey(CommunityPost, on_delete=models.CASCADE, related_name='likes')
-    user = models.ForeignKey(users, on_delete=models.CASCADE)
+    user = models.ForeignKey(Users, on_delete=models.CASCADE)
     liked_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -252,7 +252,7 @@ class PostLike(models.Model):
 
 class PostComment(models.Model):
     post = models.ForeignKey(CommunityPost, on_delete=models.CASCADE, related_name='comments')
-    user = models.ForeignKey(users, on_delete=models.CASCADE)
+    user = models.ForeignKey(Users, on_delete=models.CASCADE)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -268,7 +268,7 @@ class PostComment(models.Model):
 
 class CommunityReport(models.Model):
     community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='reports')
-    reported_by = models.ForeignKey(users, on_delete=models.CASCADE)
+    reported_by = models.ForeignKey(Users, on_delete=models.CASCADE)
     reason = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 

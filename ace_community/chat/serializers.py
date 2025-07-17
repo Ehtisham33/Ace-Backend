@@ -91,7 +91,12 @@ class CommunitySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Community
-        fields = '__all__' + ('member_count', 'created_by_name', 'club_name')
+        fields = (
+            'id', 'name', 'description', 'club', 'sport', 'level', 'is_private',
+            'location', 'topic', 'requires_approval', 'cover_image',
+            'created_by', 'created_at',
+            'member_count', 'created_by_name', 'club_name',
+        )
 
     def get_member_count(self, obj):
         return obj.memberships.count()
