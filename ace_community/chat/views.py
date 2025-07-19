@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db.models import Q, Count
 from drf_spectacular.utils import extend_schema, OpenApiParameter, extend_schema_view
-from laravel_models.models import Users
+from laravel_models.models import Users, Clubs
 
 from .models import (
     Message,
@@ -468,3 +468,45 @@ class ReportCommunityView(generics.CreateAPIView):
             reported_by=self.request.user,
             community_id=self.kwargs['community_id']
         )
+
+
+class AddCommunityMemberView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, community_id):
+        user_to_add_id = request.data.get('user')
+
+        if not user_to_add_id:
+            return Response({'detail': 'User ID is required.'}, status=400)
+
+        try:
+            community = Community.objects.get(id=community_id)
+        except Community.DoesNotExist:
+            return Response({'detail': 'Community not found.'}, status=404)
+
+        request_user = request.user
+
+        # Check if request.user is creator, admin, or club owner
+        is_creator = community.created_by_id == request_user.id
+        is_admin = CommunityMembership.objects.filter(
+            community=community,
+            user=request_user,
+            is_admin=True
+        ).exists()
+        is_club_owner = Clubs.objects.filter(id=community.club_id, user_id=request_user.id).exists()
+
+        if not (is_creator or is_admin or is_club_owner):
+            return Response({'detail': 'Not authorized to add members.'}, status=403)
+
+        if CommunityMembership.objects.filter(community_id=community_id, user_id=user_to_add_id).exists():
+            return Response({'detail': 'User is already a member.'}, status=409)
+
+        membership = CommunityMembership.objects.create(
+            community_id=community_id,
+            user_id=user_to_add_id,
+            is_admin=False,
+            is_approved=True
+        )
+
+        serializer = CommunityMembershipSerializer(membership)
+        return Response(serializer.data, status=201)

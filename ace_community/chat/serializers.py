@@ -97,6 +97,7 @@ class CommunitySerializer(serializers.ModelSerializer):
             'created_by', 'created_at',
             'member_count', 'created_by_name', 'club_name',
         )
+        read_only_fields = ['created_by', 'created_at']
 
     def get_member_count(self, obj):
         return obj.memberships.count()

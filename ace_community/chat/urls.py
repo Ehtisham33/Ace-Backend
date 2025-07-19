@@ -29,7 +29,8 @@ from .views import (
     CommunityPhotosView,
     CommunityVideosView,
     LeaveCommunityView,
-    ReportCommunityView
+    ReportCommunityView,
+    AddCommunityMemberView,
 )
 
 urlpatterns = [
@@ -69,5 +70,6 @@ urlpatterns = [
     path('communities/<int:community_id>/media/videos/', CommunityVideosView.as_view(), name='community-videos'),
     path('communities/<int:community_id>/media/documents/', CommunityDocumentsView.as_view(), name='community-documents'),
     path('communities/<int:community_id>/leave/', LeaveCommunityView.as_view(), name='leave-community'),
-    path('communities/<int:community_id>/report/', ReportCommunityView.as_view(), name='report-community')
+    path('communities/<int:community_id>/report/', ReportCommunityView.as_view(), name='report-community'),
+    path('communities/<int:community_id>/add-member/', AddCommunityMemberView.as_view(), name='add-community-member')
 ]
