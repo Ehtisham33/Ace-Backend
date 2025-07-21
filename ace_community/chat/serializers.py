@@ -16,9 +16,18 @@ from chat.models import (
     CommunityReport
 )
 
+
+class UserMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Users
+        fields = ['id','first_name','last_name', 'user_name', 'email']  # Add more if needed
+
+
 # 🔹 Private Chat
 class MessageSerializer(serializers.ModelSerializer):
     file_url = serializers.SerializerMethodField()
+    sender = UserMiniSerializer(read_only=True)
+    receiver = UserMiniSerializer(read_only=True)
 
     class Meta:
         model = Message
@@ -101,12 +110,6 @@ class CommunitySerializer(serializers.ModelSerializer):
 
     def get_member_count(self, obj):
         return obj.memberships.count()
-
-
-class UserMiniSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Users
-        fields = ['id','first_name','last_name', 'user_name', 'email']  # Add more if needed
 
 
 # 🔹 Community Members
