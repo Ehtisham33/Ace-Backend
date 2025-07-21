@@ -28,6 +28,9 @@ class MessageSerializer(serializers.ModelSerializer):
     file_url = serializers.SerializerMethodField()
     sender = UserMiniSerializer(read_only=True)
     receiver = UserMiniSerializer(read_only=True)
+    receiver_id = serializers.PrimaryKeyRelatedField(
+        queryset=Users.objects.all(), write_only=True, source='receiver'
+    )
 
     class Meta:
         model = Message
@@ -37,6 +40,7 @@ class MessageSerializer(serializers.ModelSerializer):
     def get_file_url(self, obj):
         request = self.context.get('request')
         return request.build_absolute_uri(obj.file.url) if obj.file and request else None
+
 
 # 🔹 Recent Chat List
 class RecentChatUserSerializer(serializers.ModelSerializer):
