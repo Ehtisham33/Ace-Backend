@@ -282,3 +282,11 @@ class CommunityReport(models.Model):
 
     def __str__(self):
         return f"Report by {self.reported_by.user_name} on {self.community.name}"
+
+class CustomToken(models.Model):
+    key = models.CharField(max_length=40, primary_key=True)
+    user = models.OneToOneField(Users, related_name='auth_token', on_delete=models.CASCADE)
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.key

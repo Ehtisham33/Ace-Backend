@@ -1,8 +1,13 @@
+import secrets
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.authtoken.models import Token
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
 from django.db.models import Q, Count
 from drf_spectacular.utils import extend_schema, OpenApiParameter, extend_schema_view
+from drf_spectacular.types import OpenApiTypes
 from laravel_models.models import Users, Clubs
 
 from .models import (
@@ -18,7 +23,8 @@ from .models import (
     CommunityPost,
     PostLike,
     PostComment,
-    CommunityReport
+    CommunityReport,
+    CustomToken
 )
 from .serializers import (
     MessageSerializer,
@@ -33,7 +39,8 @@ from .serializers import (
     UserFollowerSerializer,
     CommunityPostSerializer,
     PostCommentSerializer,
-    CommunityReportSerializer
+    CommunityReportSerializer,
+    UserMiniSerializer
 )
 
 @extend_schema_view(
@@ -510,3 +517,58 @@ class AddCommunityMemberView(APIView):
 
         serializer = CommunityMembershipSerializer(membership)
         return Response(serializer.data, status=201)
+
+
+@extend_schema(
+    summary="Exchange Laravel user ID for Django token",
+    description="Receives a Laravel-managed user_id (from frontend after login) and returns a Django token for authenticated requests.",
+    request={
+        "application/json": {
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "type": "integer",
+                    "example": 1
+                }
+            },
+            "required": ["user_id"]
+        }
+    },
+    responses={
+        200: {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string",
+                    "example": "27f92ae238914308ad843e3f171f13efb23acdb2"
+                }
+            }
+        },
+        400: {"type": "object", "properties": {"detail": {"type": "string"}}},
+        404: {"type": "object", "properties": {"detail": {"type": "string"}}},
+    },
+    tags=["Authentication"]
+)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def exchange_laravel_token(request):
+    user_id = request.data.get("user_id")
+    if not user_id:
+        return Response({"detail": "User ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = Users.objects.get(id=user_id)
+    except Users.DoesNotExist:
+        return Response({"detail": "User not found in Laravel Users"}, status=404)
+
+    try:
+        token = CustomToken.objects.get(user=user)
+    except CustomToken.DoesNotExist:
+        token = CustomToken(user=user, key=secrets.token_hex(20))
+        token.save()
+
+    return Response({
+        "token": token.key,
+        "user": UserMiniSerializer(user).data
+    })

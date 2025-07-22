@@ -31,6 +31,7 @@ from .views import (
     LeaveCommunityView,
     ReportCommunityView,
     AddCommunityMemberView,
+    exchange_laravel_token
 )
 
 urlpatterns = [
@@ -39,6 +40,7 @@ urlpatterns = [
     path('messages/mark-read/', MarkMessageReadView.as_view(), name='mark-message-read'),
     path('messages/unread-count/', UnreadCountView.as_view(), name='unread-message-count'),
     path('recent-chats/', RecentChatsView.as_view(), name='recent-chats'),
+    path('auth/exchange-laravel-token/', exchange_laravel_token, name='exchange-laravel-token'),
 
     # 🔹 Activity Group Chat
     path('activity/messages/', ActivityMessageListCreateView.as_view(), name='activity-messages'),
