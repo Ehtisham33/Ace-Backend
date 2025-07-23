@@ -511,7 +511,7 @@ class AddCommunityMemberView(APIView):
         membership = CommunityMembership.objects.create(
             community_id=community_id,
             user_id=user_to_add_id,
-            is_admin=False,
+            is_admin=True,
             is_approved=True
         )
 
