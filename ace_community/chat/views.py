@@ -407,7 +407,7 @@ class TogglePostLikeView(APIView):
         return Response({"status": "liked"})
 
 
-# ✅ List/Create Comments for a post
+
 class PostCommentListCreateView(generics.ListCreateAPIView):
     serializer_class = PostCommentSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -502,8 +502,8 @@ class AddCommunityMemberView(APIView):
         ).exists()
         is_club_owner = Clubs.objects.filter(id=community.club_id, user_id=request_user.id).exists()
 
-        if not (is_creator or is_admin or is_club_owner):
-            return Response({'detail': 'Not authorized to add members.'}, status=403)
+        # if not (is_creator or is_admin or is_club_owner):
+        #     return Response({'detail': 'Not authorized to add members.'}, status=403)
 
         if CommunityMembership.objects.filter(community_id=community_id, user_id=user_to_add_id).exists():
             return Response({'detail': 'User is already a member.'}, status=409)
