@@ -17,7 +17,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.room_type = self.scope['url_route']['kwargs']['room_type']
         self.room_id = self.scope['url_route']['kwargs']['room_id']
-        self.room_group_name = f"{self.room_type}_chat_{self.room_id}"
+        self.room_group_name = f"{self.room_type}_chat_{self.room_id}"  # ✅ fixed format
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
@@ -73,7 +73,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             if community:
                 await self.save_community_message(community, sender, message_text, file_url)
 
-        # Broadcast
+        # ✅ Broadcast to sender's room
         await self.channel_layer.group_send(
             self.room_group_name,
             {
@@ -87,6 +87,24 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'room_id': self.room_id
             }
         )
+
+        # ✅ Optional: Also send to receiver's group if private
+        if self.room_type == "private" and receiver_id:
+            receiver_group = f"{self.room_type}_chat_{receiver_id}"  # ✅ fix underscore
+
+            await self.channel_layer.group_send(
+                receiver_group,
+                {
+                    'type': 'chat_message',
+                    'message': message_text,
+                    'file_url': file_url,
+                    'sender': sender_id,
+                    'receiver': receiver_id,
+                    'typing': False,
+                    'room_type': self.room_type,
+                    'room_id': receiver_id
+                }
+            )
 
     async def chat_message(self, event):
         await self.send(text_data=json.dumps({
@@ -107,8 +125,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'room_id': event['room_id'],
         }))
 
-    # ----- ORM Access via sync wrappers -----
-
+    # ---------- ORM wrappers ----------
     @database_sync_to_async
     def get_user(self, user_id):
         return Users.objects.filter(id=user_id).first()
