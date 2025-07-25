@@ -1,5 +1,6 @@
 import secrets
 from rest_framework import generics, permissions, status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.authtoken.models import Token
@@ -221,8 +222,13 @@ class JoinCommunityView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        community_id = self.kwargs['community_id']
+        user = self.request.user
 
+        if CommunityMembership.objects.filter(user=user, community_id=community_id).exists():
+            raise PermissionDenied("You are already a member of this community.")
+
+        serializer.save(user=user, community_id=community_id)
 @extend_schema(summary="Get communities the user is a member of")
 class MyCommunitiesView(generics.ListAPIView):
     serializer_class = CommunitySerializer
@@ -413,10 +419,56 @@ class PostCommentListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return PostComment.objects.filter(post_id=self.kwargs['post_id'])
+        return PostComment.objects.filter(
+            post_id=self.kwargs['post_id'],
+            post__community_id=self.kwargs['community_id']  
+        )
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user, post_id=self.kwargs['post_id'])
+        post = CommunityPost.objects.filter(
+            id=self.kwargs['post_id'],
+            community_id=self.kwargs['community_id']
+        ).first()
+
+        if not post:
+            raise PermissionDenied("Invalid post or community.")
+
+        serializer.save(user=self.request.user, post=post)
+
+
+class PostCommentDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = PostCommentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return PostComment.objects.filter(
+            post_id=self.kwargs["post_id"],
+            post__community_id=self.kwargs["community_id"]  # 🚨 Extra safety!
+        )
+
+    def perform_update(self, serializer):
+        comment = self.get_object()
+        if comment.user != self.request.user:
+            raise PermissionDenied("Only the comment author can edit this comment.")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        user = self.request.user
+        post = instance.post
+        community = post.community
+
+        is_author = instance.user_id == user.id
+        is_creator = community.created_by_id == user.id
+        is_admin = CommunityMembership.objects.filter(
+            community=community,
+            user=user,
+            is_admin=True
+        ).exists()
+
+        if not (is_author or is_creator or is_admin):
+            raise PermissionDenied("You are not allowed to delete this comment.")
+
+        instance.delete()
 
 
 class CommunityPhotosView(generics.ListAPIView):
@@ -502,8 +554,8 @@ class AddCommunityMemberView(APIView):
         ).exists()
         is_club_owner = Clubs.objects.filter(id=community.club_id, user_id=request_user.id).exists()
 
-        # if not (is_creator or is_admin or is_club_owner):
-        #     return Response({'detail': 'Not authorized to add members.'}, status=403)
+        if not (is_creator or is_admin or is_club_owner):
+            return Response({'detail': 'Not authorized to add members.'}, status=403)
 
         if CommunityMembership.objects.filter(community_id=community_id, user_id=user_to_add_id).exists():
             return Response({'detail': 'User is already a member.'}, status=409)
@@ -572,3 +624,34 @@ def exchange_laravel_token(request):
         "token": token.key,
         "user": UserMiniSerializer(user).data
     })
+
+
+class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = CommunityPostSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return CommunityPost.objects.filter(community_id=self.kwargs["community_id"])
+
+    def perform_update(self, serializer):
+        post = self.get_object()
+        if post.author != self.request.user:
+            raise PermissionDenied("Only the post author can edit this post.")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        user = self.request.user
+        community = instance.community
+
+        is_author = instance.author_id == user.id
+        is_creator = community.created_by_id == user.id
+        is_admin = CommunityMembership.objects.filter(
+            community=community,
+            user=user,
+            is_admin=True
+        ).exists()
+
+        if not (is_author or is_creator or is_admin):
+            raise PermissionDenied("You are not allowed to delete this post.")
+
+        instance.delete()
