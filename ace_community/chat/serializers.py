@@ -123,6 +123,7 @@ class CommunityMembershipSerializer(serializers.ModelSerializer):
     class Meta:
         model = CommunityMembership
         fields = '__all__'
+        read_only_fields = ['user', 'community'] 
 
 # 🔹 Community Chat
 class CommunityMessageSerializer(serializers.ModelSerializer):
@@ -211,11 +212,26 @@ class PostLikeSerializer(serializers.ModelSerializer):
 
 class PostCommentSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.user_name', read_only=True)
+    replies = serializers.SerializerMethodField()
 
     class Meta:
         model = PostComment
-        fields = ['id', 'post', 'user', 'user_name', 'content', 'created_at']
-        read_only_fields = ['user', 'created_at']
+        fields = [
+            'id', 'post', 'user', 'user_name',
+            'content', 'parent', 'created_at',
+            'replies'
+        ]
+        read_only_fields = ['user', 'created_at', 'replies']
+
+    def get_replies(self, obj):
+        if obj.replies.exists():
+            return PostCommentSerializer(
+                obj.replies.order_by('created_at'),
+                many=True,
+                context=self.context
+            ).data
+        return []
+
 
 
 class CommunityReportSerializer(serializers.ModelSerializer):
