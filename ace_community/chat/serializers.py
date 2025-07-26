@@ -177,7 +177,7 @@ class CommunityPostSerializer(serializers.ModelSerializer):
             'location',
             'created_at'
         ]
-        read_only_fields = ['author', 'created_at']
+        read_only_fields = ['author', 'created_at','community']
 
     def validate_content(self, value):
         if len(value) > MAX_CONTENT_LENGTH:
