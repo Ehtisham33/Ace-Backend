@@ -41,7 +41,8 @@ from .serializers import (
     CommunityPostSerializer,
     PostCommentSerializer,
     CommunityReportSerializer,
-    UserMiniSerializer
+    UserMiniSerializer,
+    EmptySerializer
 )
 
 @extend_schema_view(
@@ -94,6 +95,7 @@ class MessageListCreateView(generics.ListCreateAPIView):
     responses={200: {"type": "object", "properties": {"status": {"type": "string"}}}}
 )
 class MarkMessageReadView(APIView):
+    serializer_class = EmptySerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
@@ -111,6 +113,7 @@ class MarkMessageReadView(APIView):
     responses={200: {"type": "object", "properties": {"unread_count": {"type": "integer"}}}}
 )
 class UnreadCountView(APIView):
+    serializer_class = EmptySerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
@@ -313,6 +316,7 @@ class MyFavoriteCommunitiesView(generics.ListAPIView):
         )
 
 class ToggleFavoriteCommunityView(APIView):
+    serializer_class = EmptySerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, community_id):
@@ -354,6 +358,7 @@ class MyFollowingView(generics.ListAPIView):
 
 
 class FollowUserView(APIView):
+    serializer_class = EmptySerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, user_id):
@@ -370,6 +375,7 @@ class FollowUserView(APIView):
 
 
 class UnfollowUserView(APIView):
+    serializer_class = EmptySerializer    
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, user_id):
@@ -400,6 +406,7 @@ class CommunityFeedView(generics.ListCreateAPIView):
 
 
 class TogglePostLikeView(APIView):
+    serializer_class = EmptySerializer    
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, post_id):
@@ -505,6 +512,7 @@ class CommunityDocumentsView(generics.ListAPIView):
     
 
 class LeaveCommunityView(APIView):
+    serializer_class = EmptySerializer    
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, community_id):
@@ -530,6 +538,7 @@ class ReportCommunityView(generics.CreateAPIView):
 
 
 class AddCommunityMemberView(APIView):
+    serializer_class = EmptySerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, community_id):

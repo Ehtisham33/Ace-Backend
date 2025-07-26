@@ -239,3 +239,7 @@ class CommunityReportSerializer(serializers.ModelSerializer):
         model = CommunityReport
         fields = ['id', 'community', 'reported_by', 'reason', 'created_at']
         read_only_fields = ['reported_by', 'created_at']
+
+
+class EmptySerializer(serializers.Serializer):
+    pass
