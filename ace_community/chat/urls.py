@@ -31,7 +31,9 @@ from .views import (
     LeaveCommunityView,
     ReportCommunityView,
     AddCommunityMemberView,
-    exchange_laravel_token
+    exchange_laravel_token,
+    PostCommentDetailView,
+    PostDetailView
 )
 
 urlpatterns = [
@@ -66,8 +68,10 @@ urlpatterns = [
     path('users/<int:user_id>/follow/', FollowUserView.as_view(), name='follow-user'),
     path('users/<int:user_id>/unfollow/', UnfollowUserView.as_view(), name='unfollow-user'),
     path('communities/<int:community_id>/feed/', CommunityFeedView.as_view(), name='community-feed'),
+    path('communities/<int:community_id>/posts/<int:pk>/', PostDetailView.as_view(), name='community-post-detail'),
     path('posts/<int:post_id>/like/', TogglePostLikeView.as_view(), name='post-like-toggle'),
-    path('posts/<int:post_id>/comments/', PostCommentListCreateView.as_view(), name='post-comments'),
+    path('communities/<int:community_id>/posts/<int:post_id>/comments/', PostCommentListCreateView.as_view(), name='post-comments'),
+    path('communities/<int:community_id>/posts/<int:post_id>/comments/<int:pk>/', PostCommentDetailView.as_view(), name='post-comment-detail'),
     path('communities/<int:community_id>/media/photos/', CommunityPhotosView.as_view(), name='community-photos'),
     path('communities/<int:community_id>/media/videos/', CommunityVideosView.as_view(), name='community-videos'),
     path('communities/<int:community_id>/media/documents/', CommunityDocumentsView.as_view(), name='community-documents'),

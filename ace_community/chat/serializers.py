@@ -20,7 +20,7 @@ from chat.models import (
 class UserMiniSerializer(serializers.ModelSerializer):
     class Meta:
         model = Users
-        fields = ['id','first_name','last_name', 'user_name', 'email']  # Add more if needed
+        fields = ['id','first_name','last_name', 'user_name', 'email']  
 
 
 # 🔹 Private Chat
@@ -207,7 +207,7 @@ class PostLikeSerializer(serializers.ModelSerializer):
     class Meta:
         model = PostLike
         fields = ['id', 'post', 'user', 'user_name', 'liked_at']
-        read_only_fields = ['user', 'liked_at']
+        read_only_fields = ['user', 'liked_at', 'post']
 
 
 class PostCommentSerializer(serializers.ModelSerializer):

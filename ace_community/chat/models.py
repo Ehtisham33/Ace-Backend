@@ -251,9 +251,23 @@ class PostLike(models.Model):
         ]
 
 class PostComment(models.Model):
-    post = models.ForeignKey(CommunityPost, on_delete=models.CASCADE, related_name='comments')
-    user = models.ForeignKey(Users, on_delete=models.CASCADE)
+    post = models.ForeignKey(
+        CommunityPost,
+        on_delete=models.CASCADE,
+        related_name='comments'
+    )
+    user = models.ForeignKey(
+        Users,
+        on_delete=models.CASCADE
+    )
     content = models.TextField()
+    parent = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        related_name='replies',
+        on_delete=models.CASCADE
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -264,6 +278,9 @@ class PostComment(models.Model):
             models.Index(fields=['user']),
             models.Index(fields=['created_at']),
         ]
+
+    def __str__(self):
+        return f"{self.user.user_name} on post {self.post.id}"
 
 
 class CommunityReport(models.Model):
