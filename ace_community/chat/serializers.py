@@ -101,7 +101,7 @@ class CommunityPlayerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Community
         fields = [
-            'id', 'name', 'description', 'sport', 'level',
+            'id', 'name', 'description', 'sport',
             'skill_level', 'visibility', 'requires_approval', 'cover_image'
         ]
         read_only_fields = ['id']
