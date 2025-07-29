@@ -22,7 +22,7 @@ from chat.models import (
 class UserMiniSerializer(serializers.ModelSerializer):
     class Meta:
         model = Users
-        fields = ['id','first_name','last_name', 'user_name', 'email']  
+        fields = ['id','first_name','last_name', 'user_name', 'email','image']  
 
 
 # 🔹 Private Chat
@@ -161,19 +161,49 @@ class MarketplaceMessageSerializer(serializers.ModelSerializer):
 
 # 🔹 Community with extra info
 class CommunityPlayerSerializer(serializers.ModelSerializer):
+    member_count = serializers.SerializerMethodField()
+    members = serializers.SerializerMethodField()
     class Meta:
         model = Community
         fields = [
             'id', 'name', 'description', 'sport',
-            'skill_level', 'visibility', 'requires_approval', 'cover_image'
+            'skill_level', 'visibility', 'requires_approval', 'cover_image',
+            'member_count', 'members'
         ]
         read_only_fields = ['id']
+
+    def get_member_count(self, obj):
+        return obj.memberships.count() if hasattr(obj, 'memberships') else 0
+
+    def get_members(self, obj):
+        request = self.context.get('request')
+        if not request:
+            return []
+
+        request_user = request.user
+
+        members = Users.objects.filter(communitymembership__community=obj).distinct()
+        following_ids = set(UserFollower.objects.filter(follower=request_user).values_list('following_id', flat=True))
+        follower_ids = set(UserFollower.objects.filter(following=request_user).values_list('follower_id', flat=True))
+        mutual_ids = following_ids.intersection(follower_ids)
+
+        return [
+            {
+                'id': user.id,
+                'user_name': user.user_name,
+                'email': user.email,
+                'avatar': user.image.url if user.image else None,
+                'is_mutual_friend': user.id in mutual_ids
+            }
+            for user in members
+        ]
 
 
 class ClubCommunitySerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source='created_by.user_name', read_only=True)
     club_name = serializers.CharField(source='club.name', read_only=True)
     member_count = serializers.SerializerMethodField()
+    members = serializers.SerializerMethodField()
 
     class Meta:
         model = Community
@@ -182,22 +212,44 @@ class ClubCommunitySerializer(serializers.ModelSerializer):
             'sport', 'level', 'skill_level', 'visibility', 'requires_approval',
             'cover_image', 'status', 'last_activity_at',
             'club', 'club_name', 'created_by', 'created_by_name',
-            'created_at', 'member_count'
+            'created_at', 'member_count', 'members'
         ]
         read_only_fields = ['created_by', 'created_at']
 
     def get_member_count(self, obj):
         return obj.memberships.count() if hasattr(obj, 'memberships') else 0
 
+    def get_members(self, obj):
+        request = self.context.get('request')
+        if not request:
+            return []
+
+        request_user = request.user
+
+        members = Users.objects.filter(communitymembership__community=obj).distinct()
+        following_ids = set(UserFollower.objects.filter(follower=request_user).values_list('following_id', flat=True))
+        follower_ids = set(UserFollower.objects.filter(following=request_user).values_list('follower_id', flat=True))
+        mutual_ids = following_ids.intersection(follower_ids)
+
+        return [
+            {
+                'id': user.id,
+                'user_name': user.user_name,
+                'email': user.email,
+                'avatar': user.image.url if user.image else None,
+                'is_mutual_friend': user.id in mutual_ids
+            }
+            for user in members
+        ]
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Make all fields optional first
+
         for field in self.fields.values():
             field.required = False
 
-        # Then, mark specific fields as required
-        for field_name in ['name', 'sport', 'description', 'visibility', 'requires_approval','club']:
+        for field_name in ['name', 'sport', 'description', 'visibility', 'requires_approval', 'club']:
             self.fields[field_name].required = True
 
 
