@@ -22,7 +22,9 @@ class Message(models.Model):
     file = models.FileField(upload_to='chat_files/', null=True, blank=True)
     file_type = models.CharField(max_length=20, choices=[
         ('document', 'Document'),
-        ('voice', 'Voice')
+        ('voice', 'Voice'),
+        ('image','Image'),
+        ('video','Video')
     ], null=True, blank=True )
     timestamp = models.DateTimeField(auto_now_add=True)
     duration = models.FloatField(null=True, blank=True, help_text="Voice message duration in seconds")
@@ -69,14 +71,12 @@ class ActivityMessage(models.Model):
     file = models.FileField(upload_to='chat_files/activity/', null=True, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
-    file_type = models.CharField(
-    max_length=20,
-    choices=[
+    file_type = models.CharField(max_length=20, choices=[
         ('document', 'Document'),
-        ('voice', 'Voice')
-    ],
-    null=True,
-    blank=True )
+        ('voice', 'Voice'),
+        ('image','Image'),
+        ('video','Video')
+    ], null=True, blank=True )
 
     def save(self, *args, **kwargs):
         if self.file and self.file_type == 'voice':
@@ -133,15 +133,12 @@ class MarketplaceMessage(models.Model):
     duration = models.FloatField(null=True, blank=True, help_text="Voice message duration in seconds")
     file = models.FileField(upload_to='chat_files/marketplace/', null=True, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
-    file_type = models.CharField(
-    max_length=20,
-    choices=[
+    file_type = models.CharField(max_length=20, choices=[
         ('document', 'Document'),
-        ('voice', 'Voice')
-    ],
-    null=True,
-    blank=True
-    )
+        ('voice', 'Voice'),
+        ('image','Image'),
+        ('video','Video')
+    ], null=True, blank=True )
     is_read = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
@@ -293,15 +290,12 @@ class CommunityMessage(models.Model):
     file = models.FileField(upload_to='chat_files/community/', null=True, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
-    file_type = models.CharField(
-    max_length=20,
-    choices=[
+    file_type = models.CharField(max_length=20, choices=[
         ('document', 'Document'),
-        ('voice', 'Voice')
-    ],
-    null=True,
-    blank=True
-    )
+        ('voice', 'Voice'),
+        ('image','Image'),
+        ('video','Video')
+    ], null=True, blank=True )
 
     def save(self, *args, **kwargs):
         if self.file and self.file_type == 'voice':
