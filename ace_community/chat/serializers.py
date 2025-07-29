@@ -174,13 +174,13 @@ class MarketplaceMessageSerializer(serializers.ModelSerializer):
 # 🔹 Community with extra info
 class CommunityPlayerSerializer(serializers.ModelSerializer):
     member_count = serializers.SerializerMethodField()
-    members = serializers.SerializerMethodField()
+    mutual_members = serializers.SerializerMethodField()
     class Meta:
         model = Community
         fields = [
             'id', 'name', 'description', 'sport',
             'skill_level', 'visibility', 'requires_approval', 'cover_image',
-            'member_count', 'members'
+            'member_count', 'mutual_members'
         ]
         read_only_fields = ['id']
 
@@ -195,7 +195,7 @@ class CommunityPlayerSerializer(serializers.ModelSerializer):
         request_user = request.user
 
         # Get all users who are members of the community
-        members = Users.objects.filter(communitymembership__community=obj).distinct()
+        mutual_members = Users.objects.filter(communitymembership__community=obj).distinct()
 
         # Determine mutual friend IDs
         following_ids = set(UserFollower.objects.filter(follower=request_user).values_list('following_id', flat=True))
@@ -204,7 +204,7 @@ class CommunityPlayerSerializer(serializers.ModelSerializer):
 
         # Inject context and return serialized data
         return MutualMemberSerializer(
-            members,
+            mutual_members,
             many=True,
             context={**self.context, 'mutual_ids': mutual_ids}
         ).data
@@ -214,7 +214,7 @@ class ClubCommunitySerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source='created_by.user_name', read_only=True)
     club_name = serializers.CharField(source='club.name', read_only=True)
     member_count = serializers.SerializerMethodField()
-    members = serializers.SerializerMethodField()
+    mutual_members = serializers.SerializerMethodField()
 
     class Meta:
         model = Community
@@ -223,7 +223,7 @@ class ClubCommunitySerializer(serializers.ModelSerializer):
             'sport', 'level', 'skill_level', 'visibility', 'requires_approval',
             'cover_image', 'status', 'last_activity_at',
             'club', 'club_name', 'created_by', 'created_by_name',
-            'created_at', 'member_count', 'members'
+            'created_at', 'member_count', 'mutual_members'
         ]
         read_only_fields = ['created_by', 'created_at']
 
@@ -239,7 +239,7 @@ class ClubCommunitySerializer(serializers.ModelSerializer):
         request_user = request.user
 
         # All users in this community
-        members = Users.objects.filter(communitymembership__community=obj).distinct()
+        mutual_members = Users.objects.filter(communitymembership__community=obj).distinct()
 
         # Find mutual friend IDs
         following_ids = set(UserFollower.objects.filter(follower=request_user).values_list('following_id', flat=True))
@@ -248,7 +248,7 @@ class ClubCommunitySerializer(serializers.ModelSerializer):
 
         # Use reusable serializer
         return MutualMemberSerializer(
-            members,
+            mutual_members,
             many=True,
             context={**self.context, 'mutual_ids': mutual_ids}
         ).data
