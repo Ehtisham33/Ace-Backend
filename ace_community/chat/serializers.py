@@ -126,6 +126,17 @@ class ClubCommunitySerializer(serializers.ModelSerializer):
     def get_member_count(self, obj):
         return obj.memberships.count() if hasattr(obj, 'memberships') else 0
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Make all fields optional first
+        for field in self.fields.values():
+            field.required = False
+
+        # Then, mark specific fields as required
+        for field_name in ['name', 'sport', 'description', 'visibility', 'requires_approval']:
+            self.fields[field_name].required = True
+
 
 
 # 🔹 Community Members
