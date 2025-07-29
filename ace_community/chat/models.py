@@ -1,3 +1,5 @@
+from mutagen import File as MutagenFile
+import mimetypes
 from django.db import models
 from django.core.validators import MaxLengthValidator, MinValueValidator, MaxValueValidator
 from laravel_models.models import Users, CourtBookings, Clubs
@@ -23,7 +25,22 @@ class Message(models.Model):
         ('voice', 'Voice')
     ], null=True, blank=True )
     timestamp = models.DateTimeField(auto_now_add=True)
+    duration = models.FloatField(null=True, blank=True, help_text="Voice message duration in seconds")
     is_read = models.BooleanField(default=False)
+
+    def save(self, *args, **kwargs):
+        if self.file and self.file_type == 'voice':
+            try:
+                # Optional safety check: only proceed if MIME is audio
+                mime_type, _ = mimetypes.guess_type(self.file.name)
+                if mime_type and mime_type.startswith('audio'):
+                    audio = MutagenFile(self.file)
+                    self.duration = round(audio.info.length, 2) if audio and audio.info else None
+                else:
+                    self.duration = None
+            except Exception:
+                self.duration = None
+        super().save(*args, **kwargs)
 
     class Meta:
         ordering = ['timestamp']
@@ -48,6 +65,7 @@ class ActivityMessage(models.Model):
         related_name='activity_sent_messages'
     )
     content = models.TextField(blank=True)
+    duration = models.FloatField(null=True, blank=True, help_text="Voice message duration in seconds")
     file = models.FileField(upload_to='chat_files/activity/', null=True, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
@@ -59,6 +77,20 @@ class ActivityMessage(models.Model):
     ],
     null=True,
     blank=True )
+
+    def save(self, *args, **kwargs):
+        if self.file and self.file_type == 'voice':
+            try:
+                # Optional safety check: only proceed if MIME is audio
+                mime_type, _ = mimetypes.guess_type(self.file.name)
+                if mime_type and mime_type.startswith('audio'):
+                    audio = MutagenFile(self.file)
+                    self.duration = round(audio.info.length, 2) if audio and audio.info else None
+                else:
+                    self.duration = None
+            except Exception:
+                self.duration = None
+        super().save(*args, **kwargs)
 
     class Meta:
         ordering = ['timestamp']
@@ -98,6 +130,7 @@ class MarketplaceMessage(models.Model):
         related_name='marketplace_received_messages'
     )
     content = models.TextField(blank=True)
+    duration = models.FloatField(null=True, blank=True, help_text="Voice message duration in seconds")
     file = models.FileField(upload_to='chat_files/marketplace/', null=True, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
     file_type = models.CharField(
@@ -110,6 +143,20 @@ class MarketplaceMessage(models.Model):
     blank=True
     )
     is_read = models.BooleanField(default=False)
+
+    def save(self, *args, **kwargs):
+        if self.file and self.file_type == 'voice':
+            try:
+                # Optional safety check: only proceed if MIME is audio
+                mime_type, _ = mimetypes.guess_type(self.file.name)
+                if mime_type and mime_type.startswith('audio'):
+                    audio = MutagenFile(self.file)
+                    self.duration = round(audio.info.length, 2) if audio and audio.info else None
+                else:
+                    self.duration = None
+            except Exception:
+                self.duration = None
+        super().save(*args, **kwargs)
 
     class Meta:
         ordering = ['timestamp']
@@ -242,6 +289,7 @@ class CommunityMessage(models.Model):
         to_field='id'
     )
     content = models.TextField(blank=True)
+    duration = models.FloatField(null=True, blank=True, help_text="Voice message duration in seconds")
     file = models.FileField(upload_to='chat_files/community/', null=True, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
@@ -255,6 +303,19 @@ class CommunityMessage(models.Model):
     blank=True
     )
 
+    def save(self, *args, **kwargs):
+        if self.file and self.file_type == 'voice':
+            try:
+                # Optional safety check: only proceed if MIME is audio
+                mime_type, _ = mimetypes.guess_type(self.file.name)
+                if mime_type and mime_type.startswith('audio'):
+                    audio = MutagenFile(self.file)
+                    self.duration = round(audio.info.length, 2) if audio and audio.info else None
+                else:
+                    self.duration = None
+            except Exception:
+                self.duration = None
+        super().save(*args, **kwargs)
 
     class Meta:
         db_table = 'community_messages'
