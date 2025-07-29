@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.validators import MaxLengthValidator, MinValueValidator, MaxValueValidator
 from laravel_models.models import Users, CourtBookings, Clubs
 
 
@@ -17,6 +18,10 @@ class Message(models.Model):
     )
     content = models.TextField(blank=True)
     file = models.FileField(upload_to='chat_files/', null=True, blank=True)
+    file_type = models.CharField(max_length=20, choices=[
+        ('document', 'Document'),
+        ('voice', 'Voice')
+    ], null=True, blank=True )
     timestamp = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
 
@@ -46,6 +51,14 @@ class ActivityMessage(models.Model):
     file = models.FileField(upload_to='chat_files/activity/', null=True, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
+    file_type = models.CharField(
+    max_length=20,
+    choices=[
+        ('document', 'Document'),
+        ('voice', 'Voice')
+    ],
+    null=True,
+    blank=True )
 
     class Meta:
         ordering = ['timestamp']
@@ -87,6 +100,15 @@ class MarketplaceMessage(models.Model):
     content = models.TextField(blank=True)
     file = models.FileField(upload_to='chat_files/marketplace/', null=True, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
+    file_type = models.CharField(
+    max_length=20,
+    choices=[
+        ('document', 'Document'),
+        ('voice', 'Voice')
+    ],
+    null=True,
+    blank=True
+    )
     is_read = models.BooleanField(default=False)
 
     class Meta:
@@ -99,10 +121,6 @@ class MarketplaceMessage(models.Model):
             models.Index(fields=['receiver']),
         ]
 
-
-from django.db import models
-from django.core.validators import MaxLengthValidator, MinValueValidator, MaxValueValidator
-from laravel_models.models import Users, Clubs  # Adjust if needed
 
 class Community(models.Model):
     # Basic Fields
@@ -227,6 +245,16 @@ class CommunityMessage(models.Model):
     file = models.FileField(upload_to='chat_files/community/', null=True, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
+    file_type = models.CharField(
+    max_length=20,
+    choices=[
+        ('document', 'Document'),
+        ('voice', 'Voice')
+    ],
+    null=True,
+    blank=True
+    )
+
 
     class Meta:
         db_table = 'community_messages'

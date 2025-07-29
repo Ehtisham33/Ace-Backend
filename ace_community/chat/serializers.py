@@ -1,3 +1,5 @@
+import os
+from django.core.exceptions import ValidationError
 from rest_framework import serializers
 from laravel_models.models import Users as Users
 from chat.models import (
@@ -41,6 +43,36 @@ class MessageSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         return request.build_absolute_uri(obj.file.url) if obj.file and request else None
 
+    def validate(self, data):
+        file = data.get('file')
+        file_type = data.get('file_type')
+
+        if file:
+            ext = os.path.splitext(file.name)[1].lower()
+
+            # Map extensions to expected file_type
+            ext_to_type = {
+                '.jpg': 'image', '.jpeg': 'image', '.png': 'image', '.gif': 'image',
+                '.mp4': 'video', '.mov': 'video', '.avi': 'video',
+                '.mp3': 'voice', '.wav': 'voice', '.ogg': 'voice',
+                '.pdf': 'document', '.doc': 'document', '.docx': 'document',
+                '.xlsx': 'document', '.xls': 'document', '.ppt': 'document', '.pptx': 'document',
+            }
+
+            # Determine actual file type from extension
+            detected_type = ext_to_type.get(ext)
+
+            if not detected_type:
+                raise serializers.ValidationError(f"Unsupported file extension: {ext}")
+
+            # Validate declared type vs detected type
+            if file_type != detected_type:
+                raise serializers.ValidationError(
+                    f"Mismatch: 'file_type' is '{file_type}', but file extension suggests '{detected_type}'"
+                )
+
+        return data
+
 
 # 🔹 Recent Chat List
 class RecentChatUserSerializer(serializers.ModelSerializer):
@@ -76,6 +108,19 @@ class ActivityMessageSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         return request.build_absolute_uri(obj.file.url) if obj.file and request else None
 
+    def validate_file(self, value):
+        allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.mp4', '.mov', '.mp3', '.wav', '.pdf', '.doc', '.docx']
+        max_size = 10 * 1024 * 1024  # 10 MB
+
+        ext = os.path.splitext(value.name)[1].lower()
+        if ext not in allowed_extensions:
+            raise ValidationError(f"Unsupported file type '{ext}'. Allowed types: {', '.join(allowed_extensions)}")
+
+        if value.size > max_size:
+            raise ValidationError("File size must be under 10MB.")
+
+        return value
+
 # 🔹 Marketplace Items
 class MarketplaceItemSerializer(serializers.ModelSerializer):
     class Meta:
@@ -95,6 +140,24 @@ class MarketplaceMessageSerializer(serializers.ModelSerializer):
     def get_file_url(self, obj):
         request = self.context.get('request')
         return request.build_absolute_uri(obj.file.url) if obj.file and request else None
+
+    def validate_file(self, value):
+        allowed_extensions = [
+            '.jpg', '.jpeg', '.png', '.gif',
+            '.mp4', '.mov',
+            '.mp3', '.wav',
+            '.pdf', '.doc', '.docx'
+        ]
+        max_size = 10 * 1024 * 1024  # 10 MB
+
+        ext = os.path.splitext(value.name)[1].lower()
+        if ext not in allowed_extensions:
+            raise ValidationError(f"Unsupported file type '{ext}'. Allowed types: {', '.join(allowed_extensions)}")
+
+        if value.size > max_size:
+            raise ValidationError("File size must be under 10MB.")
+
+        return value
 
 # 🔹 Community with extra info
 class CommunityPlayerSerializer(serializers.ModelSerializer):
@@ -160,6 +223,26 @@ class CommunityMessageSerializer(serializers.ModelSerializer):
     def get_file_url(self, obj):
         request = self.context.get('request')
         return request.build_absolute_uri(obj.file.url) if obj.file and request else None
+
+    def validate_file(self, value):
+        allowed_extensions = [
+            '.jpg', '.jpeg', '.png', '.gif',
+            '.mp4', '.mov',
+            '.mp3', '.wav',
+            '.pdf', '.doc', '.docx'
+        ]
+        max_size = 10 * 1024 * 1024  # 10 MB
+
+        ext = os.path.splitext(value.name)[1].lower()
+        if ext not in allowed_extensions:
+            raise ValidationError(
+                f"Unsupported file type '{ext}'. Allowed types: {', '.join(allowed_extensions)}"
+            )
+
+        if value.size > max_size:
+            raise ValidationError("File size must be under 10MB.")
+
+        return value
 
 
 class CommunityFavoriteSerializer(serializers.ModelSerializer):
