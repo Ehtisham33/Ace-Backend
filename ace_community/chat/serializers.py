@@ -25,6 +25,22 @@ class UserMiniSerializer(serializers.ModelSerializer):
         fields = ['id','first_name','last_name', 'user_name', 'email','image']  
 
 
+class MutualMemberSerializer(UserMiniSerializer):
+    is_mutual_friend = serializers.SerializerMethodField()
+
+    class Meta(UserMiniSerializer.Meta):
+        fields = UserMiniSerializer.Meta.fields + ['is_mutual_friend']
+
+    def get_is_mutual_friend(self, obj):
+        request_user = self.context['request'].user
+        return UserFollower.objects.filter(
+            user=request_user, followed_user=obj
+        ).exists() and UserFollower.objects.filter(
+            user=obj, followed_user=request_user
+        ).exists()
+
+    
+
 # 🔹 Private Chat
 class MessageSerializer(serializers.ModelSerializer):
     file_url = serializers.SerializerMethodField()
@@ -177,26 +193,25 @@ class CommunityPlayerSerializer(serializers.ModelSerializer):
 
     def get_members(self, obj):
         request = self.context.get('request')
-        if not request:
+        if not request or not request.user.is_authenticated:
             return []
 
         request_user = request.user
 
+        # Get all users who are members of the community
         members = Users.objects.filter(communitymembership__community=obj).distinct()
+
+        # Determine mutual friend IDs
         following_ids = set(UserFollower.objects.filter(follower=request_user).values_list('following_id', flat=True))
         follower_ids = set(UserFollower.objects.filter(following=request_user).values_list('follower_id', flat=True))
-        mutual_ids = following_ids.intersection(follower_ids)
+        mutual_ids = following_ids & follower_ids
 
-        return [
-            {
-                'id': user.id,
-                'user_name': user.user_name,
-                'email': user.email,
-                'avatar': user.image.url if user.image else None,
-                'is_mutual_friend': user.id in mutual_ids
-            }
-            for user in members
-        ]
+        # Inject context and return serialized data
+        return MutualMemberSerializer(
+            members,
+            many=True,
+            context={**self.context, 'mutual_ids': mutual_ids}
+        ).data
 
 
 class ClubCommunitySerializer(serializers.ModelSerializer):
@@ -216,39 +231,40 @@ class ClubCommunitySerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['created_by', 'created_at']
 
+
     def get_member_count(self, obj):
         return obj.memberships.count() if hasattr(obj, 'memberships') else 0
 
     def get_members(self, obj):
         request = self.context.get('request')
-        if not request:
+        if not request or not request.user.is_authenticated:
             return []
 
         request_user = request.user
 
+        # All users in this community
         members = Users.objects.filter(communitymembership__community=obj).distinct()
+
+        # Find mutual friend IDs
         following_ids = set(UserFollower.objects.filter(follower=request_user).values_list('following_id', flat=True))
         follower_ids = set(UserFollower.objects.filter(following=request_user).values_list('follower_id', flat=True))
-        mutual_ids = following_ids.intersection(follower_ids)
+        mutual_ids = following_ids & follower_ids
 
-        return [
-            {
-                'id': user.id,
-                'user_name': user.user_name,
-                'email': user.email,
-                'avatar': user.image.url if user.image else None,
-                'is_mutual_friend': user.id in mutual_ids
-            }
-            for user in members
-        ]
+        # Use reusable serializer
+        return MutualMemberSerializer(
+            members,
+            many=True,
+            context={**self.context, 'mutual_ids': mutual_ids}
+        ).data
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-
+        # Set all fields optional
         for field in self.fields.values():
             field.required = False
 
+        # These fields are required on creation/update
         for field_name in ['name', 'sport', 'description', 'visibility', 'requires_approval', 'club']:
             self.fields[field_name].required = True
 
