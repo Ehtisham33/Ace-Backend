@@ -97,23 +97,35 @@ class MarketplaceMessageSerializer(serializers.ModelSerializer):
         return request.build_absolute_uri(obj.file.url) if obj.file and request else None
 
 # 🔹 Community with extra info
-class CommunitySerializer(serializers.ModelSerializer):
-    member_count = serializers.SerializerMethodField()
+class CommunityPlayerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Community
+        fields = [
+            'id', 'name', 'description', 'sport', 'level',
+            'skill_level', 'visibility', 'requires_approval', 'cover_image'
+        ]
+        read_only_fields = ['id']
+
+
+class ClubCommunitySerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source='created_by.user_name', read_only=True)
     club_name = serializers.CharField(source='club.name', read_only=True)
+    member_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Community
-        fields = (
-            'id', 'name', 'description', 'club', 'sport', 'level', 'is_private',
-            'location', 'topic', 'requires_approval', 'cover_image',
-            'created_by', 'created_at',
-            'member_count', 'created_by_name', 'club_name',
-        )
+        fields = [
+            'id', 'name', 'official_title', 'description',
+            'sport', 'level', 'skill_level', 'visibility', 'requires_approval',
+            'cover_image', 'status', 'last_activity_at',
+            'club', 'club_name', 'created_by', 'created_by_name',
+            'created_at', 'member_count'
+        ]
         read_only_fields = ['created_by', 'created_at']
 
     def get_member_count(self, obj):
-        return obj.memberships.count()
+        return obj.memberships.count() if hasattr(obj, 'memberships') else 0
+
 
 
 # 🔹 Community Members

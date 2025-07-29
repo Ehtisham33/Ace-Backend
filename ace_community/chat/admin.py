@@ -9,6 +9,8 @@ from .models import (
     CommunityMessage,
 )
 
+# -------------------- Messages --------------------
+
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
     list_display = ('id', 'sender', 'receiver', 'content', 'is_read', 'file', 'timestamp')
@@ -16,6 +18,7 @@ class MessageAdmin(admin.ModelAdmin):
     list_filter = ('timestamp', 'is_read')
     readonly_fields = ('timestamp',)
     date_hierarchy = 'timestamp'
+
 
 @admin.register(ActivityMessage)
 class ActivityMessageAdmin(admin.ModelAdmin):
@@ -25,13 +28,6 @@ class ActivityMessageAdmin(admin.ModelAdmin):
     readonly_fields = ('timestamp',)
     date_hierarchy = 'timestamp'
 
-@admin.register(MarketplaceItem)
-class MarketplaceItemAdmin(admin.ModelAdmin):
-    list_display = ('id', 'title', 'price', 'created_at')
-    search_fields = ('title', 'description')
-    list_filter = ('created_at',)
-    readonly_fields = ('created_at',)
-    date_hierarchy = 'created_at'
 
 @admin.register(MarketplaceMessage)
 class MarketplaceMessageAdmin(admin.ModelAdmin):
@@ -41,13 +37,29 @@ class MarketplaceMessageAdmin(admin.ModelAdmin):
     readonly_fields = ('timestamp',)
     date_hierarchy = 'timestamp'
 
-@admin.register(Community)
-class CommunityAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'club', 'sport', 'level', 'is_private', 'created_by', 'created_at')
-    search_fields = ('name', 'sport', 'level', 'created_by__user_name')
-    list_filter = ('is_private', 'created_at')
+# -------------------- Marketplace --------------------
+
+@admin.register(MarketplaceItem)
+class MarketplaceItemAdmin(admin.ModelAdmin):
+    list_display = ('id', 'title', 'price', 'created_at')
+    search_fields = ('title', 'description')
+    list_filter = ('created_at',)
     readonly_fields = ('created_at',)
     date_hierarchy = 'created_at'
+
+# -------------------- Communities --------------------
+
+@admin.register(Community)
+class CommunityAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'club', 'sport', 'level', 'is_private_display', 'visibility', 'created_by', 'created_at')
+    search_fields = ('name', 'sport', 'level', 'created_by__user_name')
+    list_filter = ('visibility', 'created_at')
+    readonly_fields = ('created_at',)
+    date_hierarchy = 'created_at'
+
+    @admin.display(boolean=True, description='Is Private')
+    def is_private_display(self, obj):
+        return obj.visibility == 'private'
 
 @admin.register(CommunityMembership)
 class CommunityMembershipAdmin(admin.ModelAdmin):

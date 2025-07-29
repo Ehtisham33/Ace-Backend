@@ -100,22 +100,73 @@ class MarketplaceMessage(models.Model):
         ]
 
 
+from django.db import models
+from django.core.validators import MaxLengthValidator, MinValueValidator, MaxValueValidator
+from laravel_models.models import Users, Clubs  # Adjust if needed
+
 class Community(models.Model):
-    name = models.CharField(max_length=255)
-    description = models.TextField(blank=True)
+    # Basic Fields
+    name = models.CharField(max_length=255)  # Display name for both mobile and CMS
+    official_title = models.CharField(max_length=255, blank=True)  # Optional for CMS table
+
+    description = models.TextField(
+        blank=True,
+        validators=[MaxLengthValidator(300)]
+    )
+
+    sport = models.CharField(max_length=50)  # e.g., Padel, Yoga
+    level = models.CharField(max_length=50)  # Beginner / Intermediate / Advanced
+
+    skill_level = models.IntegerField(
+        null=True, blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(10)]
+    )
+
+    visibility = models.CharField(
+        max_length=10,
+        choices=[
+            ('public', 'Public'),
+            ('private', 'Private'),
+            ('hidden', 'Hidden')
+        ],
+        default='public'
+    )
+
+    requires_approval = models.BooleanField(default=False)
+
+    cover_image = models.ImageField(
+        upload_to='community_covers/',
+        null=True,
+        blank=True
+    )
+
+    # Status for Club Portal (Active/Inactive/Archived)
+    status = models.CharField(
+        max_length=10,
+        choices=[
+            ('active', 'Active'),
+            ('inactive', 'Inactive'),
+            ('archived', 'Archived')
+        ],
+        default='active'
+    )
+
+    last_activity_at = models.DateTimeField(null=True, blank=True)
+
+    # Optional fields
+    topic = models.CharField(max_length=100, blank=True)
+    location = models.CharField(max_length=255, blank=True)
+
+    # Relations
     club = models.ForeignKey(
         Clubs,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         db_column='club_id',
         to_field='id'
     )
-    sport = models.CharField(max_length=50)
-    level = models.CharField(max_length=50)
-    is_private = models.BooleanField(default=False)
-    location = models.CharField(max_length=255, blank=True)
-    topic = models.CharField(max_length=100, blank=True)
-    requires_approval = models.BooleanField(default=False)
-    cover_image = models.ImageField(upload_to='community_covers/', null=True, blank=True)
+
     created_by = models.ForeignKey(
         Users,
         on_delete=models.CASCADE,
@@ -123,11 +174,16 @@ class Community(models.Model):
         db_column='created_by',
         to_field='id'
     )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = 'communities'
         ordering = ['-created_at']
+
+    def __str__(self):
+        return self.name
+
 
 
 class CommunityMembership(models.Model):

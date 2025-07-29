@@ -33,7 +33,6 @@ from .serializers import (
     MarketplaceItemSerializer,
     MarketplaceMessageSerializer,
     RecentChatUserSerializer,
-    CommunitySerializer,
     CommunityMembershipSerializer,
     CommunityMessageSerializer,
     CommunityFavoriteSerializer,
@@ -42,7 +41,9 @@ from .serializers import (
     PostCommentSerializer,
     CommunityReportSerializer,
     UserMiniSerializer,
-    EmptySerializer
+    EmptySerializer,
+    ClubCommunitySerializer,
+    CommunityPlayerSerializer
 )
 
 @extend_schema_view(
@@ -192,8 +193,6 @@ class MarketplaceMessageListCreateView(generics.ListCreateAPIView):
 
 
 class CommunityListCreateView(generics.ListCreateAPIView):
-    queryset = Community.objects.all()
-    serializer_class = CommunitySerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
@@ -209,13 +208,25 @@ class CommunityListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
 
+    def get_serializer_class(self):
+        if self.request.user.user_type == 'club':
+            return ClubCommunitySerializer
+        return CommunityPlayerSerializer
+
+
 
 @extend_schema(summary="Get, update or delete a specific community")
 class CommunityDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Community.objects.all()
-    serializer_class = CommunitySerializer
+
     permission_classes = [permissions.IsAuthenticated]
     lookup_field = 'id'
+
+    def get_serializer_class(self):
+        if self.request.user.user_type == 'club':
+            return ClubCommunitySerializer
+        return CommunityPlayerSerializer
+
 
 
 @extend_schema(summary="Join a community")
@@ -234,11 +245,17 @@ class JoinCommunityView(generics.CreateAPIView):
         serializer.save(user=user, community_id=community_id)
 @extend_schema(summary="Get communities the user is a member of")
 class MyCommunitiesView(generics.ListAPIView):
-    serializer_class = CommunitySerializer
+    
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Community.objects.filter(memberships__user__id=self.request.user.id)
+        return Community.objects.filter(memberships__user=self.request.user)
+
+    def get_serializer_class(self):
+        if self.request.user.user_type == 'club':
+            return ClubCommunitySerializer
+        return CommunityPlayerSerializer
+
 
 @extend_schema(summary="List members of a specific community")
 class CommunityMembersView(generics.ListAPIView):
@@ -264,36 +281,51 @@ class CommunityMessageListCreateView(generics.ListCreateAPIView):
 
 @extend_schema(summary="List communities the user has active chats in")
 class CommunityChatThreadsView(generics.ListAPIView):
-    serializer_class = CommunitySerializer
+
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_serializer_class(self):
+        if self.request.user.user_type == 'club':
+            return ClubCommunitySerializer
+        return CommunityPlayerSerializer
+
     def get_queryset(self):
-        return Community.objects.filter(memberships__user__id=self.request.user.id).distinct()
+        return Community.objects.filter(
+            memberships__user=self.request.user
+        ).distinct()
 
 @extend_schema(
     summary="My Created Communities",
     description="Returns all communities that the authenticated user has created.",
-    responses={200: CommunitySerializer(many=True)},
+    responses={200: ClubCommunitySerializer(many=True)},  # This is okay, DRF ignores this override if `get_serializer_class()` is used
     tags=["Community"]
 )
 class MyCreatedCommunitiesView(generics.ListAPIView):
-    serializer_class = CommunitySerializer
+
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         return Community.objects.filter(created_by_id=self.request.user.id)
 
+    def get_serializer_class(self):
+        if self.request.user.user_type == 'club':
+            return ClubCommunitySerializer
+        return CommunityPlayerSerializer
+
+
 @extend_schema(
     summary="Explore Communities",
     description="Communities (public or private) created by players in the selected club that the user has not joined.",
     parameters=[
-        OpenApiParameter(name="club_id", required=True, type=int, location=OpenApiParameter.QUERY)
+        OpenApiParameter(name="club_id", required=False, type=int, location=OpenApiParameter.QUERY)
     ],
-    responses={200: CommunitySerializer(many=True)},
+
     tags=["Community"]
 )
+
+
 class ExploreCommunitiesView(generics.ListAPIView):
-    serializer_class = CommunitySerializer
+
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
@@ -305,9 +337,15 @@ class ExploreCommunitiesView(generics.ListAPIView):
             qs = qs.filter(club_id=club_id)
         return qs.exclude(memberships__user__id=self.request.user.id)
 
+    def get_serializer_class(self):
+        if self.request.user.user_type == 'club':
+            return ClubCommunitySerializer
+        return CommunityPlayerSerializer
+
+
 
 class MyFavoriteCommunitiesView(generics.ListAPIView):
-    serializer_class = CommunitySerializer
+
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
@@ -315,18 +353,28 @@ class MyFavoriteCommunitiesView(generics.ListAPIView):
             communityfavorite__user=self.request.user
         )
 
+    def get_serializer_class(self):
+        if self.request.user.user_type == 'club':
+            return ClubCommunitySerializer
+        return CommunityPlayerSerializer
+
+
 class ToggleFavoriteCommunityView(APIView):
     serializer_class = EmptySerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, community_id):
-        obj, created = CommunityFavorite.objects.get_or_create(
-            user=request.user,
+        user = request.user
+
+        favorite, created = CommunityFavorite.objects.get_or_create(
+            user=user,
             community_id=community_id
         )
+
         if not created:
-            obj.delete()
+            favorite.delete()
             return Response({"status": "removed"})
+
         return Response({"status": "added"})
 
 
