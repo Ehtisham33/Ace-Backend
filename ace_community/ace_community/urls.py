@@ -20,4 +20,5 @@ urlpatterns = [
     path('api/v1/', include('chat.urls')), 
 ]
 
- urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# ✅ This line must NOT be indented
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
