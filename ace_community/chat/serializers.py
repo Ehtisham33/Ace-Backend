@@ -32,12 +32,8 @@ class MutualMemberSerializer(UserMiniSerializer):
         fields = UserMiniSerializer.Meta.fields + ['is_mutual_friend']
 
     def get_is_mutual_friend(self, obj):
-        request_user = self.context['request'].user
-        return UserFollower.objects.filter(
-            user=request_user, followed_user=obj
-        ).exists() and UserFollower.objects.filter(
-            user=obj, followed_user=request_user
-        ).exists()
+        mutual_ids = self.context.get('mutual_ids', set())
+        return obj.id in mutual_ids
 
     
 
