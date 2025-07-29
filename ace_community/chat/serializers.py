@@ -33,7 +33,7 @@ class MutualMemberSerializer(UserMiniSerializer):
 
     def get_is_mutual_friend(self, obj):
         mutual_ids = self.context.get('mutual_ids', set())
-        return obj.id in mutual_ids
+        return obj.id in mutual_ids  
 
     
 
@@ -175,6 +175,7 @@ class MarketplaceMessageSerializer(serializers.ModelSerializer):
 class CommunityPlayerSerializer(serializers.ModelSerializer):
     member_count = serializers.SerializerMethodField()
     mutual_members = serializers.SerializerMethodField()
+
     class Meta:
         model = Community
         fields = [
@@ -194,21 +195,23 @@ class CommunityPlayerSerializer(serializers.ModelSerializer):
 
         request_user = request.user
 
-        # Get all users who are members of the community
-        mutual_members = Users.objects.filter(communitymembership__community=obj).distinct()
-
-        # Determine mutual friend IDs
+        # Get followers and followings
         following_ids = set(UserFollower.objects.filter(follower=request_user).values_list('following_id', flat=True))
         follower_ids = set(UserFollower.objects.filter(following=request_user).values_list('follower_id', flat=True))
         mutual_ids = following_ids & follower_ids
 
-        # Inject context and return serialized data
+        # Filter users who are both members of the community and mutual friends
+        mutual_members_qs = Users.objects.filter(
+            communitymembership__community=obj,
+            id__in=mutual_ids
+        ).distinct()
+
         return MutualMemberSerializer(
-            mutual_members,
+            mutual_members_qs,
             many=True,
             context={**self.context, 'mutual_ids': mutual_ids}
         ).data
-
+    
 
 class ClubCommunitySerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source='created_by.user_name', read_only=True)
@@ -238,17 +241,19 @@ class ClubCommunitySerializer(serializers.ModelSerializer):
 
         request_user = request.user
 
-        # All users in this community
-        mutual_members = Users.objects.filter(communitymembership__community=obj).distinct()
-
-        # Find mutual friend IDs
+        # Get mutual friend IDs
         following_ids = set(UserFollower.objects.filter(follower=request_user).values_list('following_id', flat=True))
         follower_ids = set(UserFollower.objects.filter(following=request_user).values_list('follower_id', flat=True))
         mutual_ids = following_ids & follower_ids
 
-        # Use reusable serializer
+        # Filter users who are both community members and mutual friends
+        mutual_members_qs = Users.objects.filter(
+            communitymembership__community=obj,
+            id__in=mutual_ids
+        ).distinct()
+
         return MutualMemberSerializer(
-            mutual_members,
+            mutual_members_qs,
             many=True,
             context={**self.context, 'mutual_ids': mutual_ids}
         ).data
@@ -256,12 +261,13 @@ class ClubCommunitySerializer(serializers.ModelSerializer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Set all fields optional
+        # Set all fields optional by default
         for field in self.fields.values():
             field.required = False
 
-        # These fields are required on creation/update
-        for field_name in ['name', 'sport', 'description', 'visibility', 'requires_approval', 'club']:
+        # Make selected fields required on create/update
+        required_fields = ['name', 'sport', 'description', 'visibility', 'requires_approval', 'club']
+        for field_name in required_fields:
             self.fields[field_name].required = True
 
 
