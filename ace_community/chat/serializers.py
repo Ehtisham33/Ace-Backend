@@ -134,7 +134,7 @@ class ClubCommunitySerializer(serializers.ModelSerializer):
             field.required = False
 
         # Then, mark specific fields as required
-        for field_name in ['name', 'sport', 'description', 'visibility', 'requires_approval']:
+        for field_name in ['name', 'sport', 'description', 'visibility', 'requires_approval','club']:
             self.fields[field_name].required = True
 
 
