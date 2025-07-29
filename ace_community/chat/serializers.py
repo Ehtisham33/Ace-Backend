@@ -187,7 +187,7 @@ class CommunityPlayerSerializer(serializers.ModelSerializer):
     def get_member_count(self, obj):
         return obj.memberships.count() if hasattr(obj, 'memberships') else 0
 
-    def get_members(self, obj):
+    def get_mutual_members(self, obj):
         request = self.context.get('request')
         if not request or not request.user.is_authenticated:
             return []
@@ -231,7 +231,7 @@ class ClubCommunitySerializer(serializers.ModelSerializer):
     def get_member_count(self, obj):
         return obj.memberships.count() if hasattr(obj, 'memberships') else 0
 
-    def get_members(self, obj):
+    def get_mutual_members(self, obj):
         request = self.context.get('request')
         if not request or not request.user.is_authenticated:
             return []
