@@ -212,7 +212,7 @@ class CommunityListCreateView(generics.ListCreateAPIView):
             qs = qs.filter(club_id=club_id)
 
         elif self.request.user.user_type == 'player':
-            club_ids = Players.objects.filter(user=self.request.user).values_list('club_id', flat=True)
+            club_ids = players.objects.filter(user=self.request.user).values_list('club_id', flat=True)
             qs = qs.filter(club_id__in=club_ids)
 
         if sport:
