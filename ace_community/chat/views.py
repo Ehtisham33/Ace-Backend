@@ -100,13 +100,17 @@ class MarkMessageReadView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        message_id = request.data.get('message_id')
-        msg = Message.objects.filter(id=message_id).first()
-        if msg:
-            msg.is_read = True
-            msg.save()
-            return Response({'status': 'read'})
-        return Response({'error': 'Invalid message_id'}, status=400)
+        message_ids = request.data.get('message_ids', [])
+
+        if not isinstance(message_ids, list):
+            return Response({'error': 'message_ids must be a list'}, status=400)
+
+        updated = Message.objects.filter(
+            id__in=message_ids,
+            receiver=request.user
+        ).update(is_read=True)
+
+        return Response({'status': 'read', 'updated_count': updated})
 
 @extend_schema(
     summary="Unread message count",
@@ -199,10 +203,17 @@ class CommunityListCreateView(generics.ListCreateAPIView):
         club_id = self.request.query_params.get("club_id")
         sport = self.request.query_params.get("sport")
         qs = Community.objects.all()
+
         if club_id:
             qs = qs.filter(club_id=club_id)
+
+        elif self.request.user.user_type == 'player':
+            club_ids = Players.objects.filter(user=self.request.user).values_list('club_id', flat=True)
+            qs = qs.filter(club_id__in=club_ids)
+
         if sport:
             qs = qs.filter(sport__iexact=sport)
+
         return qs
 
     def perform_create(self, serializer):
@@ -242,7 +253,17 @@ class JoinCommunityView(generics.CreateAPIView):
         if CommunityMembership.objects.filter(user=user, community_id=community_id).exists():
             raise PermissionDenied("You are already a member of this community.")
 
-        serializer.save(user=user, community_id=community_id)
+        try:
+            community = Community.objects.get(id=community_id)
+        except Community.DoesNotExist:
+            raise PermissionDenied("Community not found.")
+        
+        serializer.save(
+            user=user,
+            community=community,
+            is_approved=not community.requires_approval
+        )
+
 @extend_schema(summary="Get communities the user is a member of")
 class MyCommunitiesView(generics.ListAPIView):
     
@@ -442,15 +463,43 @@ class CommunityFeedView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         community_id = self.kwargs.get("community_id")
+        community = Community.objects.filter(id=community_id).first()
+
+        if not community:
+            return CommunityPost.objects.none()
+
+        if community.visibility in ['private', 'hidden']:
+            is_member = CommunityMembership.objects.filter(
+                community=community,
+                user=self.request.user
+            ).exists()
+            if not is_member:
+                return CommunityPost.objects.none()
+
         return CommunityPost.objects.filter(
             community_id=community_id
         ).order_by('-created_at')
 
     def perform_create(self, serializer):
+        community_id = self.kwargs.get("community_id")
+        community = Community.objects.filter(id=community_id).first()
+
+        if not community:
+            raise PermissionDenied("Invalid community.")
+
+        is_member = CommunityMembership.objects.filter(
+            community=community,
+            user=self.request.user
+        ).exists()
+
+        if not is_member:
+            raise PermissionDenied("You must join the community to post.")
+
         serializer.save(
             author=self.request.user,
-            community_id=self.kwargs.get("community_id")
+            community_id=community_id
         )
+
 
 
 class TogglePostLikeView(APIView):
@@ -458,14 +507,30 @@ class TogglePostLikeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, post_id):
+        post = CommunityPost.objects.select_related('community').filter(id=post_id).first()
+
+        if not post:
+            return Response({"error": "Post not found."}, status=404)
+
+        community = post.community
+
+        if community.visibility in ['private', 'hidden']:
+            is_member = CommunityMembership.objects.filter(
+                community=community,
+                user=request.user
+            ).exists()
+            if not is_member:
+                return Response({"error": "You must join this community to like posts."}, status=403)
+
         obj, created = PostLike.objects.get_or_create(
             user=request.user,
-            post_id=post_id
+            post=post
         )
         if not created:
             obj.delete()
             return Response({"status": "unliked"})
         return Response({"status": "liked"})
+
 
 
 
@@ -476,11 +541,11 @@ class PostCommentListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         return PostComment.objects.filter(
             post_id=self.kwargs['post_id'],
-            post__community_id=self.kwargs['community_id']  
+            post__community_id=self.kwargs['community_id']
         )
 
     def perform_create(self, serializer):
-        post = CommunityPost.objects.filter(
+        post = CommunityPost.objects.select_related('community').filter(
             id=self.kwargs['post_id'],
             community_id=self.kwargs['community_id']
         ).first()
@@ -488,7 +553,18 @@ class PostCommentListCreateView(generics.ListCreateAPIView):
         if not post:
             raise PermissionDenied("Invalid post or community.")
 
+        community = post.community
+
+        is_member = CommunityMembership.objects.filter(
+            community=community,
+            user=self.request.user
+        ).exists()
+
+        if not is_member:
+            raise PermissionDenied("You must join the community to comment.")
+
         serializer.save(user=self.request.user, post=post)
+
 
 
 class PostCommentDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -531,8 +607,22 @@ class CommunityPhotosView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        community_id = self.kwargs["community_id"]
+        community = Community.objects.filter(id=community_id).first()
+
+        if not community:
+            return CommunityPost.objects.none()
+
+        if community.visibility in ['private', 'hidden']:
+            is_member = CommunityMembership.objects.filter(
+                community=community,
+                user=self.request.user
+            ).exists()
+            if not is_member:
+                return CommunityPost.objects.none()
+
         return CommunityPost.objects.filter(
-            community_id=self.kwargs["community_id"],
+            community_id=community_id,
             image__isnull=False
         ).exclude(image='')
 
@@ -542,10 +632,25 @@ class CommunityVideosView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        community_id = self.kwargs["community_id"]
+        community = Community.objects.filter(id=community_id).first()
+
+        if not community:
+            return CommunityPost.objects.none()
+
+        if community.visibility in ['private', 'hidden']:
+            is_member = CommunityMembership.objects.filter(
+                community=community,
+                user=self.request.user
+            ).exists()
+            if not is_member:
+                return CommunityPost.objects.none()
+
         return CommunityPost.objects.filter(
-            community_id=self.kwargs["community_id"],
+            community_id=community_id,
             video__isnull=False
         ).exclude(video='')
+
 
 
 class CommunityDocumentsView(generics.ListAPIView):
@@ -553,10 +658,25 @@ class CommunityDocumentsView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        community_id = self.kwargs["community_id"]
+        community = Community.objects.filter(id=community_id).first()
+
+        if not community:
+            return CommunityPost.objects.none()
+        
+        if community.visibility in ['private', 'hidden']:
+            is_member = CommunityMembership.objects.filter(
+                community=community,
+                user=self.request.user
+            ).exists()
+            if not is_member:
+                return CommunityPost.objects.none()
+
         return CommunityPost.objects.filter(
-            community_id=self.kwargs["community_id"],
+            community_id=community_id,
             file__isnull=False
         ).exclude(file='')
+
     
 
 class LeaveCommunityView(APIView):
