@@ -100,10 +100,10 @@ class MarkMessageReadView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
+        message_ids = request.data.get('message_ids',[])
+
         if 'message_ids' not in request.data:
             return Response({'error': 'message_ids is required'}, status=400)
-
-        message_ids = request.data.get('message_ids')
 
         if not isinstance(message_ids, list):
             return Response({'error': 'message_ids must be a list'}, status=400)
