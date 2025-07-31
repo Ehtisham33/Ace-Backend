@@ -8,7 +8,7 @@ from . import consumers
 # - community: general community threads
 websocket_urlpatterns = [
     re_path(
-        r'^ws/(?P<room_type>private|activity|marketplace|community)/(?P<room_id>\w+)/$',
+        r'ws/(?P<room_type>private|activity|marketplace|community)/(?P<room_id>\w+)/$',
         consumers.ChatConsumer.as_asgi(),
         name='chat-socket'
     ),
