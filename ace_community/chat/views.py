@@ -9,7 +9,7 @@ from rest_framework.permissions import AllowAny
 from django.db.models import Q, Count
 from drf_spectacular.utils import extend_schema, OpenApiParameter, extend_schema_view
 from drf_spectacular.types import OpenApiTypes
-from laravel_models.models import Users, Clubs
+from laravel_models.models import Users, Clubs, Players
 
 from .models import (
     Message,
@@ -212,7 +212,7 @@ class CommunityListCreateView(generics.ListCreateAPIView):
             qs = qs.filter(club_id=club_id)
 
         elif self.request.user.user_type == 'player':
-            club_ids = players.objects.filter(user=self.request.user).values_list('club_id', flat=True)
+            club_ids = Players.objects.filter(user=self.request.user).values_list('club_id', flat=True)
             qs = qs.filter(club_id__in=club_ids)
 
         if sport:
