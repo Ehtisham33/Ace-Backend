@@ -351,14 +351,13 @@ class MyCreatedCommunitiesView(generics.ListAPIView):
 
 
 class ExploreCommunitiesView(generics.ListAPIView):
-
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        
         qs = Community.objects.filter(
-            created_by__user_type='player' 
-            created_by_id=self.request.user.id  
+            created_by__user_type='player'  
+        ).exclude(
+            created_by_id=self.request.user.id 
         ).exclude(
             memberships__user__id=self.request.user.id  
         )
