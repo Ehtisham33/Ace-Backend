@@ -355,18 +355,38 @@ class ExploreCommunitiesView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        club_id = self.request.query_params.get("club_id")
+        
         qs = Community.objects.filter(
-            created_by__user_type='player'
+            created_by__user_type='player' 
+            created_by_id=self.request.user.id  
+        ).exclude(
+            memberships__user__id=self.request.user.id  
         )
+
+        club_id = self.request.query_params.get("club_id")
+        sport_id = self.request.query_params.get("sport_id")
+        city = self.request.query_params.get("city")
+        visibility = self.request.query_params.get("visibility")
+        search = self.request.query_params.get("search")
+
         if club_id:
             qs = qs.filter(club_id=club_id)
-        return qs.exclude(memberships__user__id=self.request.user.id)
+        if sport_id:
+            qs = qs.filter(sport_id=sport_id)
+        if city:
+            qs = qs.filter(city__icontains=city)
+        if visibility:
+            qs = qs.filter(visibility=visibility)
+        if search:
+            qs = qs.filter(name__icontains=search)
+
+        return qs
 
     def get_serializer_class(self):
         if self.request.user.user_type == 'club':
             return ClubCommunitySerializer
         return CommunityPlayerSerializer
+
 
 
 
