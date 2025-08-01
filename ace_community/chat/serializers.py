@@ -347,6 +347,7 @@ class CommunityPostSerializer(serializers.ModelSerializer):
             'content',
             'image',
             'video',
+            'file',
             'category',
             'tags',
             'is_private',
