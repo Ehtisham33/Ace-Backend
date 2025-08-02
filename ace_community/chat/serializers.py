@@ -398,7 +398,7 @@ class PostCommentSerializer(serializers.ModelSerializer):
             'content', 'parent', 'created_at',
             'replies'
         ]
-        read_only_fields = ['user', 'created_at', 'replies']
+        read_only_fields = ['user', 'created_at', 'replies','post']
 
     def get_replies(self, obj):
         if obj.replies.exists():
