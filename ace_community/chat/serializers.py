@@ -415,7 +415,7 @@ class CommunityReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = CommunityReport
         fields = ['id', 'community', 'reported_by', 'reason', 'created_at']
-        read_only_fields = ['reported_by', 'created_at']
+        read_only_fields = ['reported_by', 'created_at','community']
 
 
 class EmptySerializer(serializers.Serializer):
