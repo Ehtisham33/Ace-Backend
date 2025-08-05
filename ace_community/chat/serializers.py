@@ -186,15 +186,34 @@ class MarketplaceMessageSerializer(serializers.ModelSerializer):
 class CommunityPlayerSerializer(serializers.ModelSerializer):
     member_count = serializers.SerializerMethodField()
     mutual_members = serializers.SerializerMethodField()
+    is_member = serializers.SerializerMethodField()
+    is_creator = serializers.SerializerMethodField()
+    is_admin = serializers.SerializerMethodField()
+    members = serializers.SerializerMethodField()
 
     class Meta:
         model = Community
         fields = [
             'id', 'name', 'description', 'sport',
             'skill_level', 'visibility', 'requires_approval', 'cover_image',
-            'member_count', 'mutual_members'
+            'member_count', 'mutual_members','is_member', 'is_creator', 'is_admin', 'members'
         ]
         read_only_fields = ['id']
+
+    def get_is_member(self, obj):
+        user = self.context['request'].user
+        return CommunityMembership.objects.filter(community=obj, user=user).exists()
+
+    def get_is_creator(self, obj):
+        return obj.created_by_id == self.context['request'].user.id
+
+    def get_is_admin(self, obj):
+        user = self.context['request'].user
+        return CommunityMembership.objects.filter(community=obj, user=user, is_admin=True).exists()
+
+    def get_members(self, obj):
+        qs = CommunityMembership.objects.filter(community=obj)
+        return CommunityMembershipSerializer(qs, many=True).data
 
     def get_member_count(self, obj):
         return obj.memberships.count() if hasattr(obj, 'memberships') else 0
@@ -229,6 +248,10 @@ class ClubCommunitySerializer(serializers.ModelSerializer):
     club_name = serializers.CharField(source='club.name', read_only=True)
     member_count = serializers.SerializerMethodField()
     mutual_members = serializers.SerializerMethodField()
+    is_member = serializers.SerializerMethodField()
+    is_creator = serializers.SerializerMethodField()
+    is_admin = serializers.SerializerMethodField()
+    members = serializers.SerializerMethodField()
 
     class Meta:
         model = Community
@@ -237,10 +260,24 @@ class ClubCommunitySerializer(serializers.ModelSerializer):
             'sport', 'level', 'skill_level', 'visibility', 'requires_approval',
             'cover_image', 'status', 'last_activity_at',
             'club', 'club_name', 'created_by', 'created_by_name',
-            'created_at', 'member_count', 'mutual_members'
+            'created_at', 'member_count', 'mutual_members','is_member', 'is_creator', 'is_admin', 'members'
         ]
         read_only_fields = ['created_by', 'created_at']
 
+    def get_is_member(self, obj):
+        user = self.context['request'].user
+        return CommunityMembership.objects.filter(community=obj, user=user).exists()
+
+    def get_is_creator(self, obj):
+        return obj.created_by_id == self.context['request'].user.id
+
+    def get_is_admin(self, obj):
+        user = self.context['request'].user
+        return CommunityMembership.objects.filter(community=obj, user=user, is_admin=True).exists()
+
+    def get_members(self, obj):
+        qs = CommunityMembership.objects.filter(community=obj)
+        return CommunityMembershipSerializer(qs, many=True).data
 
     def get_member_count(self, obj):
         return obj.memberships.count() if hasattr(obj, 'memberships') else 0
@@ -251,13 +288,12 @@ class ClubCommunitySerializer(serializers.ModelSerializer):
             return []
 
         request_user = request.user
-
-        # Get mutual friend IDs
+        
         following_ids = set(UserFollower.objects.filter(follower=request_user).values_list('following_id', flat=True))
         follower_ids = set(UserFollower.objects.filter(following=request_user).values_list('follower_id', flat=True))
         mutual_ids = following_ids & follower_ids
 
-        # Filter users who are both community members and mutual friends
+
         mutual_members_qs = Users.objects.filter(
             communitymembership__community=obj,
             id__in=mutual_ids
