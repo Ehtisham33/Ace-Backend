@@ -375,7 +375,7 @@ class CommunityPostSerializer(serializers.ModelSerializer):
     def get_comment_count(self, obj):
         return PostComment.objects.filter(post=obj).count()
     
-     def get_like_count(self, obj):
+    def get_like_count(self, obj):
         return PostLike.objects.filter(post=obj).count()
 
     def get_liked_by_me(self, obj):
