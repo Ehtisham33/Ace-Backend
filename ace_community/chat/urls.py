@@ -35,7 +35,10 @@ from .views import (
     PostCommentDetailView,
     PostDetailView,
     MyNotificationsView,
-    MarkNotificationReadView
+    MarkNotificationReadView,
+    ToggleCommunityStatusView,
+    ArchiveCommunityView
+
 )
 
 urlpatterns = [
@@ -82,4 +85,7 @@ urlpatterns = [
     path('communities/<int:community_id>/add-member/', AddCommunityMemberView.as_view(), name='add-community-member'),
     path("notifications/", MyNotificationsView.as_view()),
     path("notifications/mark-read/", MarkNotificationReadView.as_view()),
+    path('communities/<int:community_id>/toggle-status/', ToggleCommunityStatusView.as_view(), name='toggle-community-status'),
+    path('communities/<int:community_id>/archive/', ArchiveCommunityView.as_view(), name='archive-community'),
+
 ]

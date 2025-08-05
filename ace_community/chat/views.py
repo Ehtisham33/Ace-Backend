@@ -3,6 +3,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.decorators import action
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
@@ -10,6 +11,7 @@ from django.db.models import Q, Count
 from drf_spectacular.utils import extend_schema, OpenApiParameter, extend_schema_view
 from drf_spectacular.types import OpenApiTypes
 from laravel_models.models import Users, Clubs, Players
+
 
 from .models import (
     Message,
@@ -91,7 +93,7 @@ class MessageListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         try:
             message = serializer.save(sender=self.request.user) 
-            
+
             if message.receiver != request.user:
                 Notification.objects.create(
                     recipient=message.receiver,
@@ -967,3 +969,57 @@ class MarkNotificationReadView(APIView):
 
         count = Notification.objects.filter(id__in=ids, recipient=request.user).update(is_read=True)
         return Response({"updated": count})
+
+
+class ToggleCommunityStatusView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, community_id):
+        try:
+            community = Community.objects.get(id=community_id)
+        except Community.DoesNotExist:
+            return Response({'detail': 'Community not found.'}, status=404)
+
+        user = request.user
+        is_creator = community.created_by_id == user.id
+        is_club_owner = community.club and community.club.user_id == user.id
+        is_admin = CommunityMembership.objects.filter(
+            community=community,
+            user=user,
+            is_admin=True
+        ).exists()
+
+        if not (is_creator or is_club_owner or is_admin):
+            return Response({'detail': 'Not authorized.'}, status=403)
+
+        if community.status == 'active':
+            community.status = 'inactive'
+        elif community.status == 'inactive':
+            community.status = 'active'
+        community.save()
+
+        return Response({'status': community.status})
+
+
+class ArchiveCommunityView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, community_id):
+        try:
+            community = Community.objects.get(id=community_id)
+        except Community.DoesNotExist:
+            return Response({'detail': 'Community not found.'}, status=404)
+
+        user = request.user
+        is_creator = community.created_by_id == user.id
+
+        if not is_creator:
+            return Response({'detail': 'Only the creator can archive this community.'}, status=403)
+
+        if community.status == 'archived':
+            community.status = 'active'
+        elif community.status == 'active':
+            community.status = 'archived'
+        community.save()
+
+        return Response({'status': community.status})
