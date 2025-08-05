@@ -33,7 +33,9 @@ from .views import (
     AddCommunityMemberView,
     exchange_laravel_token,
     PostCommentDetailView,
-    PostDetailView
+    PostDetailView,
+    MyNotificationsView,
+    MarkNotificationReadView
 )
 
 urlpatterns = [
@@ -77,5 +79,7 @@ urlpatterns = [
     path('communities/<int:community_id>/media/documents/', CommunityDocumentsView.as_view(), name='community-documents'),
     path('communities/<int:community_id>/leave/', LeaveCommunityView.as_view(), name='leave-community'),
     path('communities/<int:community_id>/report/', ReportCommunityView.as_view(), name='report-community'),
-    path('communities/<int:community_id>/add-member/', AddCommunityMemberView.as_view(), name='add-community-member')
+    path('communities/<int:community_id>/add-member/', AddCommunityMemberView.as_view(), name='add-community-member'),
+    path("notifications/", MyNotificationsView.as_view()),
+    path("notifications/mark-read/", MarkNotificationReadView.as_view()),
 ]

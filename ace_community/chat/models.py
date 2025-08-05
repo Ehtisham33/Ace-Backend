@@ -446,3 +446,26 @@ class CustomToken(models.Model):
 
     def __str__(self):
         return self.key
+
+
+class Notification(models.Model):
+    NOTIFICATION_TYPES = [
+        ('like', 'Like'),
+        ('comment', 'Comment'),
+        ('message', 'Message'),
+    ]
+
+    recipient = models.ForeignKey(Users, on_delete=models.CASCADE, related_name='notifications', db_index=True)
+    sender = models.ForeignKey(Users, on_delete=models.CASCADE, related_name='sent_notifications')
+    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES, db_index=True)
+    post = models.ForeignKey(CommunityPost, null=True, blank=True, on_delete=models.CASCADE)
+    comment = models.ForeignKey(PostComment, null=True, blank=True, on_delete=models.CASCADE)
+    message = models.ForeignKey(Message, null=True, blank=True, on_delete=models.CASCADE)
+    is_read = models.BooleanField(default=False, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["recipient", "is_read"]),
+            models.Index(fields=["recipient", "created_at"]),
+        ]

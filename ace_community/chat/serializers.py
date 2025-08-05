@@ -1,6 +1,7 @@
 import os
 from django.core.exceptions import ValidationError
 from rest_framework import serializers
+from rest_framework.pagination import PageNumberPagination
 from laravel_models.models import Users as Users
 from chat.models import (
     Message,
@@ -15,14 +16,24 @@ from chat.models import (
     CommunityPost,
     PostComment,
     PostLike,
-    CommunityReport
+    CommunityReport,
+    Notification
 )
 
 
 class UserMiniSerializer(serializers.ModelSerializer):
     class Meta:
         model = Users
-        fields = ['id','first_name','last_name', 'user_name', 'email','image']  
+        fields = ['id','first_name','last_name', 'user_name', 'email','image']
+
+
+class PostLikeUserSerializer(serializers.ModelSerializer):
+    user = UserMiniSerializer(read_only=True)
+
+    class Meta:
+        model = PostLike
+        fields = ['user', 'liked_at']
+
 
 
 class MutualMemberSerializer(UserMiniSerializer):
@@ -337,7 +348,9 @@ MAX_CONTENT_LENGTH = 1000
 class CommunityPostSerializer(serializers.ModelSerializer):
     author_name = serializers.CharField(source='author.user_name', read_only=True)
     community_name = serializers.CharField(source='community.name', read_only=True)
-
+    comment_count = serializers.SerializerMethodField()
+    like_count = serializers.SerializerMethodField()
+    liked_by_me = serializers.SerializerMethodField()
     class Meta:
         model = CommunityPost
         fields = [
@@ -352,10 +365,23 @@ class CommunityPostSerializer(serializers.ModelSerializer):
             'tags',
             'is_private',
             'location',
-            'created_at'
+            'created_at',
+            'comment_count',
+            'like_count',
+            'liked_by_me'
         ]
         read_only_fields = ['author', 'created_at','community']
 
+    def get_comment_count(self, obj):
+        return PostComment.objects.filter(post=obj).count()
+    
+     def get_like_count(self, obj):
+        return PostLike.objects.filter(post=obj).count()
+
+    def get_liked_by_me(self, obj):
+        user = self.context.get('request').user
+        return PostLike.objects.filter(post=obj, user=user).exists()
+    
     def validate_content(self, value):
         if len(value) > MAX_CONTENT_LENGTH:
             raise serializers.ValidationError(f"Post content cannot exceed {MAX_CONTENT_LENGTH} characters.")
@@ -388,7 +414,7 @@ class PostLikeSerializer(serializers.ModelSerializer):
 
 
 class PostCommentSerializer(serializers.ModelSerializer):
-    user_name = serializers.CharField(source='user.user_name', read_only=True)
+    user = UserMiniSerializer(read_only=True)
     replies = serializers.SerializerMethodField()
 
     class Meta:
@@ -401,14 +427,18 @@ class PostCommentSerializer(serializers.ModelSerializer):
         read_only_fields = ['user', 'created_at', 'replies','post']
 
     def get_replies(self, obj):
-        if obj.replies.exists():
-            return PostCommentSerializer(
-                obj.replies.order_by('created_at'),
-                many=True,
-                context=self.context
-            ).data
-        return []
+        request = self.context.get('request')
+        if not request:
+            return []
 
+        replies_qs = obj.replies.order_by('created_at')
+
+        paginator = PageNumberPagination()
+        paginator.page_size_query_param = 'reply_page_size'   # optional: ?reply_page_size=5
+        paginator.page_query_param = 'reply_page'             # optional: ?reply_page=2
+
+        paginated_qs = paginator.paginate_queryset(replies_qs, request)
+        return PostCommentSerializer(paginated_qs, many=True, context=self.context).data
 
 
 class CommunityReportSerializer(serializers.ModelSerializer):
@@ -420,3 +450,15 @@ class CommunityReportSerializer(serializers.ModelSerializer):
 
 class EmptySerializer(serializers.Serializer):
     pass
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    sender = UserMiniSerializer(read_only=True)
+
+    class Meta:
+        model = Notification
+        fields = [
+            'id', 'recipient', 'sender', 'notification_type',
+            'post', 'comment', 'message', 'is_read', 'created_at'
+        ]
+        read_only_fields = ['recipient', 'created_at']

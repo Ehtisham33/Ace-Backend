@@ -25,7 +25,8 @@ from .models import (
     PostLike,
     PostComment,
     CommunityReport,
-    CustomToken
+    CustomToken,
+    Notification
 )
 from .serializers import (
     MessageSerializer,
@@ -43,8 +44,15 @@ from .serializers import (
     UserMiniSerializer,
     EmptySerializer,
     ClubCommunitySerializer,
-    CommunityPlayerSerializer
+    CommunityPlayerSerializer,
+    PostLikeUserSerializer,
+    NotificationSerializer
 )
+
+
+def enforce_active_status(community):
+    if community.status != 'active':
+        raise PermissionDenied("This community is not active.")
 
 @extend_schema_view(
     get=extend_schema(
@@ -82,7 +90,16 @@ class MessageListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         try:
-            serializer.save(sender=self.request.user)
+            message = serializer.save(sender=self.request.user) 
+            
+            if message.receiver != request.user:
+                Notification.objects.create(
+                    recipient=message.receiver,
+                    sender=request.user,
+                    notification_type='message',
+                    message=message
+                )
+
         except Exception as e:
             import logging
             logging.exception("Message creation failed")
@@ -234,7 +251,6 @@ class CommunityListCreateView(generics.ListCreateAPIView):
 @extend_schema(summary="Get, update or delete a specific community")
 class CommunityDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Community.objects.all()
-
     permission_classes = [permissions.IsAuthenticated]
     lookup_field = 'id'
 
@@ -242,6 +258,33 @@ class CommunityDetailView(generics.RetrieveUpdateDestroyAPIView):
         if self.request.user.user_type == 'club':
             return ClubCommunitySerializer
         return CommunityPlayerSerializer
+
+    def perform_update(self, serializer):
+        community = self.get_object()
+        user = self.request.user
+
+        is_creator = community.created_by_id == user.id
+        is_club_owner = community.club and community.club.user_id == user.id
+        is_admin = CommunityMembership.objects.filter(
+            community=community,
+            user=user,
+            is_admin=True
+        ).exists()
+
+        if not (is_creator or is_club_owner or is_admin):
+            raise PermissionDenied("You are not allowed to edit this community.")
+
+        enforce_active_status(community)
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        user = self.request.user
+        is_creator = instance.created_by_id == user.id
+
+        if not is_creator:
+            raise PermissionDenied("Only the creator can delete this community.")
+
+        instance.delete()
 
 
 
@@ -500,9 +543,16 @@ class CommunityFeedView(generics.ListCreateAPIView):
             if not is_member:
                 return CommunityPost.objects.none()
 
-        return CommunityPost.objects.filter(
+        qs = CommunityPost.objects.filter(
             community_id=community_id
         ).order_by('-created_at')
+
+        liked_by_me = self.request.query_params.get("liked_by_me")
+
+        if liked_by_me in ['true', '1']:
+            qs = qs.filter(postlike__user=self.request.user).distinct()
+
+        return qs
 
     def perform_create(self, serializer):
         community_id = self.kwargs.get("community_id")
@@ -511,19 +561,21 @@ class CommunityFeedView(generics.ListCreateAPIView):
         if not community:
             raise PermissionDenied("Invalid community.")
 
+        enforce_active_status(community)
+
+        is_creator = community.created_by_id == self.request.user.id
         is_member = CommunityMembership.objects.filter(
             community=community,
             user=self.request.user
         ).exists()
 
-        if not is_member:
+        if not (is_member or is_creator):
             raise PermissionDenied("You must join the community to post.")
 
         serializer.save(
             author=self.request.user,
             community_id=community_id
         )
-
 
 
 class TogglePostLikeView(APIView):
@@ -537,23 +589,41 @@ class TogglePostLikeView(APIView):
             return Response({"error": "Post not found."}, status=404)
 
         community = post.community
+        user = request.user
 
-        if community.visibility in ['private', 'hidden']:
-            is_member = CommunityMembership.objects.filter(
-                community=community,
-                user=request.user
-            ).exists()
-            if not is_member:
-                return Response({"error": "You must join this community to like posts."}, status=403)
+        enforce_active_status(community)
 
-        obj, created = PostLike.objects.get_or_create(
-            user=request.user,
-            post=post
-        )
+        is_member = CommunityMembership.objects.filter(community=community, user=user).exists()
+        is_creator = community.created_by_id == user.id
+
+        if community.visibility in ['private', 'hidden'] and not (is_member or is_creator):
+            return Response({"error": "You must join this community to like posts."}, status=403)
+
+        obj, created = PostLike.objects.get_or_create(user=user, post=post)
+
         if not created:
             obj.delete()
-            return Response({"status": "unliked"})
-        return Response({"status": "liked"})
+            liked_users = Users.objects.filter(postlike__post=post)
+            return Response({
+                "status": "unliked",
+                "like_count": liked_users.count(),
+                "liked_users": UserMiniSerializer(liked_users, many=True).data
+            })
+        if created:
+            if post.author != request.user:
+                Notification.objects.create(
+                    recipient=post.author,
+                    sender=request.user,
+                    notification_type='like',
+                    post=post
+                )
+
+        liked_users = Users.objects.filter(postlike__post=post)
+        return Response({
+            "status": "liked",
+            "like_count": liked_users.count(),
+            "liked_users": UserMiniSerializer(liked_users, many=True).data
+        })
 
 
 
@@ -579,15 +649,28 @@ class PostCommentListCreateView(generics.ListCreateAPIView):
 
         community = post.community
 
+        enforce_active_status(community)
+
+        is_creator = community.created_by_id == self.request.user.id
         is_member = CommunityMembership.objects.filter(
             community=community,
             user=self.request.user
         ).exists()
 
-        if not is_member:
+        if not (is_member or is_creator):
             raise PermissionDenied("You must join the community to comment.")
+        
+        if post.author != request.user:
+            Notification.objects.create(
+                recipient=post.author,
+                sender=request.user,
+                notification_type='comment',
+                post=post,
+                comment=comment  
+            )
 
         serializer.save(user=self.request.user, post=post)
+
 
 
 
@@ -856,3 +939,31 @@ class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
             raise PermissionDenied("You are not allowed to delete this post.")
 
         instance.delete()
+
+
+class MyNotificationsView(generics.ListAPIView):
+    serializer_class = NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        qs = Notification.objects.filter(recipient=self.request.user)
+
+        is_read = self.request.query_params.get("is_read")
+        if is_read in ['true', '1']:
+            qs = qs.filter(is_read=True)
+        elif is_read in ['false', '0']:
+            qs = qs.filter(is_read=False)
+
+        return qs.order_by('-created_at')
+
+
+class MarkNotificationReadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        ids = request.data.get("ids", [])
+        if not isinstance(ids, list):
+            return Response({"error": "Expected list of IDs"}, status=400)
+
+        count = Notification.objects.filter(id__in=ids, recipient=request.user).update(is_read=True)
+        return Response({"updated": count})
