@@ -17,7 +17,8 @@ from chat.models import (
     PostComment,
     PostLike,
     CommunityReport,
-    Notification
+    Notification,
+    CommentLike
 )
 
 
