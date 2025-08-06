@@ -1136,7 +1136,7 @@ class PendingApprovalMembershipsView(APIView):
 
 
 class ToggleCommentLikeView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, community_id, post_id, comment_id):
         user = request.user
