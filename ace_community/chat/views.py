@@ -95,7 +95,7 @@ class MessageListCreateView(generics.ListCreateAPIView):
         try:
             message = serializer.save(sender=self.request.user) 
 
-            if message.receiver != request.user:
+            if message.receiver != self.request.user:
                 Notification.objects.create(
                     recipient=message.receiver,
                     sender=request.user,
@@ -461,7 +461,7 @@ class ToggleFavoriteCommunityView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, community_id):
-        user = request.user
+        user = self.request.user
 
         favorite, created = CommunityFavorite.objects.get_or_create(
             user=user,
@@ -598,7 +598,7 @@ class TogglePostLikeView(APIView):
             return Response({"error": "Post not found."}, status=404)
 
         community = post.community
-        user = request.user
+        user = self.request.user
 
         enforce_active_status(community)
 
@@ -619,7 +619,7 @@ class TogglePostLikeView(APIView):
                 "liked_users": UserMiniSerializer(liked_users, many=True).data
             })
         if created:
-            if post.author != request.user:
+            if post.author != self.request.user:
                 Notification.objects.create(
                     recipient=post.author,
                     sender=request.user,
@@ -669,7 +669,7 @@ class PostCommentListCreateView(generics.ListCreateAPIView):
         if not (is_member or is_creator):
             raise PermissionDenied("You must join the community to comment.")
         
-        if post.author != request.user:
+        if post.author != self.request.user:
             Notification.objects.create(
                 recipient=post.author,
                 sender=request.user,
@@ -857,7 +857,7 @@ class AddCommunityMemberView(APIView):
         except Community.DoesNotExist:
             return Response({'detail': 'Community not found.'}, status=404)
 
-        request_user = request.user
+        request_user = self.request.user
 
         is_creator = community.created_by_id == request_user.id
         is_admin = CommunityMembership.objects.filter(
@@ -1010,7 +1010,7 @@ class ToggleCommunityStatusView(APIView):
         except Community.DoesNotExist:
             return Response({'detail': 'Community not found.'}, status=404)
 
-        user = request.user
+        user = self.request.user
         is_creator = community.created_by_id == user.id
         is_club_owner = community.club and community.club.user_id == user.id
         is_admin = CommunityMembership.objects.filter(
@@ -1040,7 +1040,7 @@ class ArchiveCommunityView(APIView):
         except Community.DoesNotExist:
             return Response({'detail': 'Community not found.'}, status=404)
 
-        user = request.user
+        user = self.request.user
         is_creator = community.created_by_id == user.id
 
         if not is_creator:
@@ -1065,7 +1065,7 @@ class PendingApprovalMembershipsView(APIView):
         except Community.DoesNotExist:
             return Response({'detail' : 'community is not found'}, status=403)
 
-        user = request.user
+        user = self.request.user
         is_creator = community.created_by_id == user.id
         is_admin = CommunityMembership.objects.filter(
             community =  community,
@@ -1087,7 +1087,7 @@ class PendingApprovalMembershipsView(APIView):
         except Community.DoesNotExist:
             return Response({'detail': 'Community not found.'}, status=404)
 
-        user = request.user
+        user = self.request.user
 
         is_creator = community.created_by_id == user.id
         is_admin = CommunityMembership.objects.filter(
