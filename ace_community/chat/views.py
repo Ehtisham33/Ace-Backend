@@ -308,6 +308,8 @@ class JoinCommunityView(generics.CreateAPIView):
         except Community.DoesNotExist:
             raise PermissionDenied("Community not found.")
         
+        enforce_active_status(community)
+
         serializer.save(
             user=user,
             community=community,
@@ -688,6 +690,9 @@ class PostCommentDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def perform_update(self, serializer):
         comment = self.get_object()
+
+        enforce_active_status(community)
+
         if comment.user != self.request.user:
             raise PermissionDenied("Only the comment author can edit this comment.")
         serializer.save()
@@ -722,6 +727,12 @@ class CommunityPhotosView(generics.ListAPIView):
         if not community:
             return CommunityPost.objects.none()
 
+        if community.status == 'archived':
+            return CommunityPost.objects.none()
+
+        if community.status == 'inactive' and self.request.user.user_type == 'player':
+            return CommunityPost.objects.none()
+
         if community.visibility in ['private', 'hidden']:
             is_member = CommunityMembership.objects.filter(
                 community=community,
@@ -745,6 +756,12 @@ class CommunityVideosView(generics.ListAPIView):
         community = Community.objects.filter(id=community_id).first()
 
         if not community:
+            return CommunityPost.objects.none()
+
+        if community.status == 'archived':
+            return CommunityPost.objects.none()
+
+        if community.status == 'inactive' and self.request.user.user_type == 'player':
             return CommunityPost.objects.none()
 
         if community.visibility in ['private', 'hidden']:
@@ -771,6 +788,12 @@ class CommunityDocumentsView(generics.ListAPIView):
         community = Community.objects.filter(id=community_id).first()
 
         if not community:
+            return CommunityPost.objects.none()
+        
+        if community.status == 'archived':
+            return CommunityPost.objects.none()
+
+        if community.status == 'inactive' and self.request.user.user_type == 'player':
             return CommunityPost.objects.none()
         
         if community.visibility in ['private', 'hidden']:
@@ -830,8 +853,7 @@ class AddCommunityMemberView(APIView):
             return Response({'detail': 'Community not found.'}, status=404)
 
         request_user = request.user
-
-        # Check if request.user is creator, admin, or club owner
+        
         is_creator = community.created_by_id == request_user.id
         is_admin = CommunityMembership.objects.filter(
             community=community,
@@ -921,6 +943,9 @@ class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def perform_update(self, serializer):
         post = self.get_object()
+
+        enforce_active_status(community)
+
         if post.author != self.request.user:
             raise PermissionDenied("Only the post author can edit this post.")
         serializer.save()
