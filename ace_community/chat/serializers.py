@@ -453,15 +453,24 @@ class PostCommentSerializer(serializers.ModelSerializer):
     user = UserMiniSerializer(read_only=True)
     user_name = serializers.CharField(source='user.user_name', read_only=True)
     replies = serializers.SerializerMethodField()
+    like_count = serializers.SerializerMethodField()
+    liked_by_me = serializers.SerializerMethodField()
 
     class Meta:
         model = PostComment
         fields = [
             'id', 'post', 'user', 'user_name',
             'content', 'parent', 'created_at',
-            'replies'
+            'replies','like_count', 'liked_by_me'
         ]
         read_only_fields = ['user', 'created_at', 'replies','post']
+
+    def get_like_count(self, obj):
+        return obj.likes.count()
+
+    def get_liked_by_me(self, obj):
+        user = self.context.get('request').user
+        return obj.likes.filter(user=user).exists()
 
     def get_replies(self, obj):
         request = self.context.get('request')
@@ -507,3 +516,12 @@ class PendingMembershipSerializer(serializers.ModelSerializer):
     class Meta:
         model = CommunityMembership
         fields = ['user', 'community_id', 'is_approved']
+
+
+class CommentLikeSerializer(serializers.ModelSerializer):
+    user = UserMiniSerializer(read_only=True)
+
+    class Meta:
+        model = CommentLike
+        fields = ['id', 'comment', 'user', 'liked_at']
+        read_only_fields = ['id', 'liked_at', 'user']

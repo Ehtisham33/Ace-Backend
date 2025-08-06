@@ -469,3 +469,13 @@ class Notification(models.Model):
             models.Index(fields=["recipient", "is_read"]),
             models.Index(fields=["recipient", "created_at"]),
         ]
+
+
+class CommentLike(models.Model):
+    comment = models.ForeignKey(PostComment, on_delete=models.CASCADE, related_name='likes')
+    user = models.ForeignKey(Users, on_delete=models.CASCADE)
+    liked_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('comment', 'user')
+        db_table = 'comment_likes'

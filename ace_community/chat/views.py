@@ -28,7 +28,8 @@ from .models import (
     PostComment,
     CommunityReport,
     CustomToken,
-    Notification
+    Notification,
+    CommentLike
 )
 from .serializers import (
     MessageSerializer,
@@ -49,7 +50,8 @@ from .serializers import (
     CommunityPlayerSerializer,
     PostLikeUserSerializer,
     NotificationSerializer,
-    PendingMembershipSerializer
+    PendingMembershipSerializer,
+    CommentLikeSerializer
 )
 
 
@@ -246,7 +248,13 @@ class CommunityListCreateView(generics.ListCreateAPIView):
         return qs
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        community = serializer.save(created_by=self.request.user)
+        CommunityMembership.objects.create(
+            user=self.request.user,
+            community=community,
+            is_admin=True,
+            is_approved=True
+        )
 
     def get_serializer_class(self):
         if self.request.user.user_type == 'club':
@@ -292,7 +300,6 @@ class CommunityDetailView(generics.RetrieveUpdateDestroyAPIView):
             raise PermissionDenied("Only the creator can delete this community.")
 
         instance.delete()
-
 
 
 @extend_schema(summary="Join a community")
@@ -1125,4 +1132,46 @@ class PendingApprovalMembershipsView(APIView):
         return Response({
             'approved': approved_count,
             'rejected': rejected_count
+        }, status=200)
+
+
+class ToggleCommentLikeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, community_id, post_id, comment_id):
+        user = request.user
+
+        community = Community.objects.filter(id=community_id).first()
+        if not community:
+            return Response({"error": "Community not found."}, status=404)
+
+        post = CommunityPost.objects.filter(id=post_id, community_id=community_id).first()
+        if not post:
+            return Response({"error": "Post not found in this community."}, status=404)
+
+        comment = PostComment.objects.filter(id=comment_id, post=post).first()
+        if not comment:
+            return Response({"error": "Comment not found on this post."}, status=404)
+
+
+        if community.visibility in ['private', 'hidden']:
+            return Response({"error": "You must be a member to like this comment."}, status=403)
+
+        like_obj, created = CommentLike.objects.get_or_create(comment=comment, user=user)
+
+        if not created:
+            like_obj.delete()
+            status_label = "unliked"
+        else:
+            status_label = "liked"
+
+        like_count = comment.likes.count()
+        liked_by_me = comment.likes.filter(user=user).exists()
+        liked_users = CommentLikeSerializer(comment.likes.all(), many=True).data
+
+        return Response({
+            "status": status_label,
+            "like_count": like_count,
+            "liked_by_me": liked_by_me,
+            "liked_users": liked_users
         }, status=200)
