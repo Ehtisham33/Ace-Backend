@@ -451,6 +451,7 @@ class PostLikeSerializer(serializers.ModelSerializer):
 
 class PostCommentSerializer(serializers.ModelSerializer):
     user = UserMiniSerializer(read_only=True)
+    user_name = serializers.CharField(source='user.user_name', read_only=True)
     replies = serializers.SerializerMethodField()
 
     class Meta:
