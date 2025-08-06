@@ -1138,6 +1138,32 @@ class PendingApprovalMembershipsView(APIView):
 class ToggleCommentLikeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    def get(self, request, community_id, post_id, comment_id=None):
+        user = request.user
+
+        community = Community.objects.filter(id=community_id).first()
+        if not community:
+            return Response({"error": "Community not found."}, status=404)
+
+        post = CommunityPost.objects.filter(id=post_id, community_id=community_id).first()
+        if not post:
+            return Response({"error": "Post not found in this community."}, status=404)
+
+        comments = PostComment.objects.filter(post=post).order_by('created_at')
+
+        comment_data = []
+        for comment in comments:
+            comment_dict = PostCommentSerializer(comment).data
+            comment_dict['like_count'] = comment.likes.count()
+            comment_dict['liked_by_me'] = comment.likes.filter(user=user).exists()
+            comment_dict['liked_users'] = CommentLikeSerializer(comment.likes.all(), many=True).data
+            comment_data.append(comment_dict)
+
+        return Response({
+            "post_id": post.id,
+            "comments": comment_data
+        })
+
     def post(self, request, community_id, post_id, comment_id):
         user = request.user
 
