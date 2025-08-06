@@ -498,3 +498,11 @@ class NotificationSerializer(serializers.ModelSerializer):
             'post', 'comment', 'message', 'is_read', 'created_at'
         ]
         read_only_fields = ['recipient', 'created_at']
+
+
+class PendingMembershipSerializer(serializers.ModelSerializer):
+    user = UserMiniSerializer(read_only=True)
+
+    class Meta:
+        model = CommunityMembership
+        fields = ['user', 'community_id', 'is_approved']

@@ -48,7 +48,8 @@ from .serializers import (
     ClubCommunitySerializer,
     CommunityPlayerSerializer,
     PostLikeUserSerializer,
-    NotificationSerializer
+    NotificationSerializer,
+    PendingMembershipSerializer
 )
 
 
@@ -225,6 +226,7 @@ class CommunityListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         club_id = self.request.query_params.get("club_id")
         sport = self.request.query_params.get("sport")
+        community_id = self.request.query_params.get("community_id")
         qs = Community.objects.all()
 
         if club_id:
@@ -237,6 +239,9 @@ class CommunityListCreateView(generics.ListCreateAPIView):
 
         if sport:
             qs = qs.filter(sport__iexact=sport)
+
+        if community_id:
+            qs = qs.filter(id = community_id)
 
         return qs
 
@@ -853,7 +858,7 @@ class AddCommunityMemberView(APIView):
             return Response({'detail': 'Community not found.'}, status=404)
 
         request_user = request.user
-        
+
         is_creator = community.created_by_id == request_user.id
         is_admin = CommunityMembership.objects.filter(
             community=community,
@@ -1048,3 +1053,74 @@ class ArchiveCommunityView(APIView):
         community.save()
 
         return Response({'status': community.status})
+    
+
+class PendingApprovalMembershipsView(APIView):
+    serializer_class = PendingMembershipSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, community_id):
+        try:
+            community = Community.objects.get(id = community_id)
+        except Community.DoesNotExist:
+            return Response({'detail' : 'community is not found'}, status=403)
+
+        user = request.user
+        is_creator = community.created_by_id == user.id
+        is_admin = CommunityMembership.objects.filter(
+            community =  community,
+            user = user,
+            is_admin = True
+        ).exists()
+        is_club_owner = community.club and community.club.user_id == user.id
+
+        if not (is_admin or is_creator or is_club_owner):
+            return Response({'detail ':'only creator or admin can see details'}, status=403)
+        
+        memberships = CommunityMembership.objects.filter(community=community, is_approved=False)
+        serializer = PendingMembershipSerializer(memberships, many=True)
+        return Response(serializer.data)
+    
+    def post(self, request, community_id):
+        try:
+            community = Community.objects.get(id=community_id)
+        except Community.DoesNotExist:
+            return Response({'detail': 'Community not found.'}, status=404)
+
+        user = request.user
+
+        is_creator = community.created_by_id == user.id
+        is_admin = CommunityMembership.objects.filter(
+            community=community,
+            user=user,
+            is_admin=True
+        ).exists()
+        is_club_owner = community.club and community.club.user_id == user.id
+
+        if not (is_creator or is_admin or is_club_owner):
+            return Response({'detail': 'You are not authorized.'}, status=403)
+
+        approve_ids = request.data.get("approve_ids", [])
+        reject_ids = request.data.get("reject_ids", [])
+
+        if not isinstance(approve_ids, list) or not isinstance(reject_ids, list):
+            return Response({'detail': 'approve_ids and reject_ids must be lists.'}, status=400)
+
+        approved_count = CommunityMembership.objects.filter(
+            community=community,
+            user_id__in=approve_ids,
+            is_approved=False
+        ).update(is_approved=True)
+
+        rejected_qs = CommunityMembership.objects.filter(
+            community=community,
+            user_id__in=reject_ids,
+            is_approved=False
+        )
+        rejected_count = rejected_qs.count()
+        rejected_qs.delete()
+
+        return Response({
+            'approved': approved_count,
+            'rejected': rejected_count
+        }, status=200)

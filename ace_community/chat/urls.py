@@ -37,7 +37,8 @@ from .views import (
     MyNotificationsView,
     MarkNotificationReadView,
     ToggleCommunityStatusView,
-    ArchiveCommunityView
+    ArchiveCommunityView,
+    PendingApprovalMembershipsView
 
 )
 
@@ -87,5 +88,6 @@ urlpatterns = [
     path("notifications/mark-read/", MarkNotificationReadView.as_view()),
     path('communities/<int:community_id>/toggle-status/', ToggleCommunityStatusView.as_view(), name='toggle-community-status'),
     path('communities/<int:community_id>/archive/', ArchiveCommunityView.as_view(), name='archive-community'),
+    path('communities/<int:community_id>/memberships/pending-approval/', PendingApprovalMembershipsView.as_view()),
 
 ]
