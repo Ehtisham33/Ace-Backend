@@ -98,7 +98,7 @@ class MessageListCreateView(generics.ListCreateAPIView):
             if message.receiver != self.request.user:
                 Notification.objects.create(
                     recipient=message.receiver,
-                    sender=request.user,
+                    sender=self.request.user,
                     notification_type='message',
                     message=message
                 )
@@ -130,7 +130,7 @@ class MarkMessageReadView(APIView):
 
         updated = Message.objects.filter(
             id__in=message_ids,
-            receiver=request.user
+            receiver=self.request.user
         ).update(is_read=True)
 
         return Response({'status': 'read', 'updated_count': updated})
@@ -507,11 +507,11 @@ class FollowUserView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, user_id):
-        if request.user.id == user_id:
+        if self.request.user.id == user_id:
             return Response({"error": "You cannot follow yourself."}, status=400)
 
         obj, created = UserFollower.objects.get_or_create(
-            follower=request.user,
+            follower=self.request.user,
             following_id=user_id
         )
         if not created:
@@ -525,7 +525,7 @@ class UnfollowUserView(APIView):
 
     def post(self, request, user_id):
         deleted, _ = UserFollower.objects.filter(
-            follower=request.user,
+            follower=self.request.user,
             following_id=user_id
         ).delete()
         if deleted:
@@ -622,7 +622,7 @@ class TogglePostLikeView(APIView):
             if post.author != self.request.user:
                 Notification.objects.create(
                     recipient=post.author,
-                    sender=request.user,
+                    sender=self.request.user,
                     notification_type='like',
                     post=post
                 )
@@ -672,7 +672,7 @@ class PostCommentListCreateView(generics.ListCreateAPIView):
         if post.author != self.request.user:
             Notification.objects.create(
                 recipient=post.author,
-                sender=request.user,
+                sender=self.request.user,
                 notification_type='comment',
                 post=post,
                 comment=comment  
@@ -823,7 +823,7 @@ class LeaveCommunityView(APIView):
     def post(self, request, community_id):
         deleted, _ = CommunityMembership.objects.filter(
             community_id=community_id,
-            user=request.user
+            user=self.request.user
         ).delete()
 
         if deleted:
@@ -997,7 +997,7 @@ class MarkNotificationReadView(APIView):
         if not isinstance(ids, list):
             return Response({"error": "Expected list of IDs"}, status=400)
 
-        count = Notification.objects.filter(id__in=ids, recipient=request.user).update(is_read=True)
+        count = Notification.objects.filter(id__in=ids, recipient=self.request.user).update(is_read=True)
         return Response({"updated": count})
 
 
@@ -1049,6 +1049,8 @@ class ArchiveCommunityView(APIView):
         if community.status == 'archived':
             community.status = 'active'
         elif community.status == 'active':
+            community.status = 'archived'
+        elif community.status == 'inactive':
             community.status = 'archived'
         community.save()
 
