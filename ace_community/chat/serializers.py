@@ -28,6 +28,69 @@ class UserMiniSerializer(serializers.ModelSerializer):
         fields = ['id','first_name','last_name', 'user_name', 'email','image']
 
 
+MAX_IMAGE_SIZE_MB = 5
+MAX_VIDEO_SIZE_MB = 20
+MAX_CONTENT_LENGTH = 1000
+
+class CommunityPostSerializer(serializers.ModelSerializer):
+    author_name = serializers.CharField(source='author.user_name', read_only=True)
+    community_name = serializers.CharField(source='community.name', read_only=True)
+    comment_count = serializers.SerializerMethodField()
+    like_count = serializers.SerializerMethodField()
+    liked_by_me = serializers.SerializerMethodField()
+    class Meta:
+        model = CommunityPost
+        fields = [
+            'id',
+            'community', 'community_name',
+            'author', 'author_name',
+            'content',
+            'image',
+            'video',
+            'file',
+            'category',
+            'tags',
+            'is_private',
+            'location',
+            'created_at',
+            'comment_count',
+            'like_count',
+            'liked_by_me'
+        ]
+        read_only_fields = ['author', 'created_at','community']
+
+    def get_comment_count(self, obj):
+        return PostComment.objects.filter(post=obj).count()
+    
+    def get_like_count(self, obj):
+        return PostLike.objects.filter(post=obj).count()
+
+    def get_liked_by_me(self, obj):
+        user = self.context.get('request').user
+        return PostLike.objects.filter(post=obj, user=user).exists()
+    
+    def validate_content(self, value):
+        if len(value) > MAX_CONTENT_LENGTH:
+            raise serializers.ValidationError(f"Post content cannot exceed {MAX_CONTENT_LENGTH} characters.")
+        return value
+
+    def validate_image(self, image):
+        if image and image.size > MAX_IMAGE_SIZE_MB * 1024 * 1024:
+            raise serializers.ValidationError(f"Image size must be under {MAX_IMAGE_SIZE_MB}MB.")
+        return image
+
+    def validate_video(self, video):
+        if video and video.size > MAX_VIDEO_SIZE_MB * 1024 * 1024:
+            raise serializers.ValidationError(f"Video size must be under {MAX_VIDEO_SIZE_MB}MB.")
+        return video
+
+    def create(self, validated_data):
+        # Placeholder for future auto-tag parsing logic
+        # tags = validated_data.get("tags", "")
+        # validated_data["tags"] = process_tags(tags)
+        return super().create(validated_data)
+    
+    
 class PostLikeUserSerializer(serializers.ModelSerializer):
     user = UserMiniSerializer(read_only=True)
 
@@ -385,69 +448,6 @@ class UserFollowerSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserFollower
         fields = ['id', 'follower', 'following', 'created_at', 'follower_name', 'following_name']
-
-
-MAX_IMAGE_SIZE_MB = 5
-MAX_VIDEO_SIZE_MB = 20
-MAX_CONTENT_LENGTH = 1000
-
-class CommunityPostSerializer(serializers.ModelSerializer):
-    author_name = serializers.CharField(source='author.user_name', read_only=True)
-    community_name = serializers.CharField(source='community.name', read_only=True)
-    comment_count = serializers.SerializerMethodField()
-    like_count = serializers.SerializerMethodField()
-    liked_by_me = serializers.SerializerMethodField()
-    class Meta:
-        model = CommunityPost
-        fields = [
-            'id',
-            'community', 'community_name',
-            'author', 'author_name',
-            'content',
-            'image',
-            'video',
-            'file',
-            'category',
-            'tags',
-            'is_private',
-            'location',
-            'created_at',
-            'comment_count',
-            'like_count',
-            'liked_by_me'
-        ]
-        read_only_fields = ['author', 'created_at','community']
-
-    def get_comment_count(self, obj):
-        return PostComment.objects.filter(post=obj).count()
-    
-    def get_like_count(self, obj):
-        return PostLike.objects.filter(post=obj).count()
-
-    def get_liked_by_me(self, obj):
-        user = self.context.get('request').user
-        return PostLike.objects.filter(post=obj, user=user).exists()
-    
-    def validate_content(self, value):
-        if len(value) > MAX_CONTENT_LENGTH:
-            raise serializers.ValidationError(f"Post content cannot exceed {MAX_CONTENT_LENGTH} characters.")
-        return value
-
-    def validate_image(self, image):
-        if image and image.size > MAX_IMAGE_SIZE_MB * 1024 * 1024:
-            raise serializers.ValidationError(f"Image size must be under {MAX_IMAGE_SIZE_MB}MB.")
-        return image
-
-    def validate_video(self, video):
-        if video and video.size > MAX_VIDEO_SIZE_MB * 1024 * 1024:
-            raise serializers.ValidationError(f"Video size must be under {MAX_VIDEO_SIZE_MB}MB.")
-        return video
-
-    def create(self, validated_data):
-        # Placeholder for future auto-tag parsing logic
-        # tags = validated_data.get("tags", "")
-        # validated_data["tags"] = process_tags(tags)
-        return super().create(validated_data)
 
 
 class PostLikeSerializer(serializers.ModelSerializer):
