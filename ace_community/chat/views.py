@@ -229,7 +229,7 @@ class CommunityListCreateView(generics.ListCreateAPIView):
         club_id = self.request.query_params.get("club_id")
         sport = self.request.query_params.get("sport")
         community_id = self.request.query_params.get("community_id")
-        qs = Community.objects.all()
+        qs = Community.objects.filter(status='active')
 
         if club_id:
             qs = qs.filter(club_id=club_id)
@@ -334,7 +334,7 @@ class MyCommunitiesView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Community.objects.filter(memberships__user=self.request.user)
+        return Community.objects.filter(memberships__user=self.request.user, status = 'active')
 
     def get_serializer_class(self):
         if self.request.user.user_type == 'club':
@@ -414,7 +414,8 @@ class ExploreCommunitiesView(generics.ListAPIView):
 
     def get_queryset(self):
         qs = Community.objects.filter(
-            created_by__user_type='player'  
+            created_by__user_type='player',
+            status = 'active'  
         ).exclude(
             created_by_id=self.request.user.id 
         ).exclude(
@@ -676,6 +677,7 @@ class PostCommentListCreateView(generics.ListCreateAPIView):
         if not (is_member or is_creator):
             raise PermissionDenied("You must join the community to comment.")
         
+        comment = serializer.save(user=self.request.user, post=post)
         if post.author != self.request.user:
             Notification.objects.create(
                 recipient=post.author,
@@ -685,7 +687,7 @@ class PostCommentListCreateView(generics.ListCreateAPIView):
                 comment=comment  
             )
 
-        serializer.save(user=self.request.user, post=post)
+        # serializer.save(user=self.request.user, post=post)
 
 
 
@@ -955,7 +957,7 @@ class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def perform_update(self, serializer):
         post = self.get_object()
-
+        community = post.community
         enforce_active_status(community)
 
         if post.author != self.request.user:
@@ -1178,9 +1180,11 @@ class ToggleCommentLikeView(APIView):
         comment = PostComment.objects.filter(id=comment_id, post=post).first()
         if not comment:
             return Response({"error": "Comment not found on this post."}, status=404)
+        
+        is_member = CommunityMembership.objects.filter(community=community, user=user).exists()
+        is_creator = community.created_by_id == user.id
 
-
-        if community.visibility in ['private', 'hidden']:
+        if community.visibility in ['private', 'hidden'] and not (is_member or is_creator):
             return Response({"error": "You must be a member to like this comment."}, status=403)
 
         like_obj, created = CommentLike.objects.get_or_create(comment=comment, user=user)
