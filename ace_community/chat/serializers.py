@@ -38,6 +38,9 @@ class CommunityPostSerializer(serializers.ModelSerializer):
     comment_count = serializers.SerializerMethodField()
     like_count = serializers.SerializerMethodField()
     liked_by_me = serializers.SerializerMethodField()
+    shared_from = serializers.SerializerMethodField()
+    share_count = serializers.SerializerMethodField()
+
     class Meta:
         model = CommunityPost
         fields = [
@@ -55,7 +58,9 @@ class CommunityPostSerializer(serializers.ModelSerializer):
             'created_at',
             'comment_count',
             'like_count',
-            'liked_by_me'
+            'liked_by_me',
+            'shared_from',
+            'share_count'
         ]
         read_only_fields = ['author', 'created_at','community']
 
@@ -68,6 +73,21 @@ class CommunityPostSerializer(serializers.ModelSerializer):
     def get_liked_by_me(self, obj):
         user = self.context.get('request').user
         return PostLike.objects.filter(post=obj, user=user).exists()
+    
+    def get_shared_from(self, obj):
+        if obj.shared_from:
+            return {
+                "id": obj.shared_from.id,
+                "community_id": obj.shared_from.community.id,
+                "community_name": obj.shared_from.community.name,
+                "author_id": obj.shared_from.author.id,
+                "author_name": obj.shared_from.author.user_name,
+                "content": obj.shared_from.content[:100],
+            }
+        return None
+
+    def get_share_count(self, obj):
+        return obj.shared_copies.count()
     
     def validate_content(self, value):
         if len(value) > MAX_CONTENT_LENGTH:
@@ -90,7 +110,7 @@ class CommunityPostSerializer(serializers.ModelSerializer):
         # validated_data["tags"] = process_tags(tags)
         return super().create(validated_data)
     
-    
+
 class PostLikeUserSerializer(serializers.ModelSerializer):
     user = UserMiniSerializer(read_only=True)
 
