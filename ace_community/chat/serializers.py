@@ -69,7 +69,9 @@ class CommunityPostSerializer(serializers.ModelSerializer):
     def get_post_url(self, obj):
         request = self.context.get("request")
         if request:
-            return request.build_absolute_uri(f"/communities/{obj.community.id}/posts/{obj.id}/")
+            return request.build_absolute_uri(
+                f"/api/v1/communities/{obj.community.id}/posts/{obj.id}/"
+            )
         return None
 
     def get_comment_count(self, obj):
