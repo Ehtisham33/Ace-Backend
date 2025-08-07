@@ -40,6 +40,7 @@ class CommunityPostSerializer(serializers.ModelSerializer):
     liked_by_me = serializers.SerializerMethodField()
     shared_from = serializers.SerializerMethodField()
     share_count = serializers.SerializerMethodField()
+    post_url = serializers.SerializerMethodField()
 
     class Meta:
         model = CommunityPost
@@ -60,9 +61,16 @@ class CommunityPostSerializer(serializers.ModelSerializer):
             'like_count',
             'liked_by_me',
             'shared_from',
-            'share_count'
+            'share_count',
+            'post_url'
         ]
         read_only_fields = ['author', 'created_at','community']
+    
+    def get_post_url(self, obj):
+        request = self.context.get("request")
+        if request:
+            return request.build_absolute_uri(f"/communities/{obj.community.id}/posts/{obj.id}/")
+        return None
 
     def get_comment_count(self, obj):
         return PostComment.objects.filter(post=obj).count()
