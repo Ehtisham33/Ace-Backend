@@ -29,11 +29,12 @@ class Message(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     duration = models.FloatField(null=True, blank=True, help_text="Voice message duration in seconds")
     is_read = models.BooleanField(default=False)
+    shared_post = models.ForeignKey('CommunityPost', null=True, blank=True, on_delete=models.SET_NULL, related_name='shared_in_messages')
 
     def save(self, *args, **kwargs):
         if self.file and self.file_type == 'voice':
             try:
-                # Optional safety check: only proceed if MIME is audio
+
                 mime_type, _ = mimetypes.guess_type(self.file.name)
                 if mime_type and mime_type.startswith('audio'):
                     audio = MutagenFile(self.file)
@@ -360,6 +361,7 @@ class CommunityPost(models.Model):
     is_private = models.BooleanField(default=False)
     location = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    shared_from = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='shared_copies')
 
     class Meta:
         ordering = ['-created_at']

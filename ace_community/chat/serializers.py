@@ -58,6 +58,15 @@ class MessageSerializer(serializers.ModelSerializer):
         queryset=Users.objects.all(), write_only=True, source='receiver'
     )
 
+        # ✅ NEW FIELDS
+    shared_post = CommunityPostSerializer(read_only=True)
+    shared_post_id = serializers.PrimaryKeyRelatedField(
+        queryset=CommunityPost.objects.all(),
+        source='shared_post',
+        write_only=True,
+        required=False
+    )
+
     class Meta:
         model = Message
         fields = '__all__'

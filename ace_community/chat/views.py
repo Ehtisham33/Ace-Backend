@@ -95,12 +95,38 @@ class MessageListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         try:
-            message = serializer.save(sender=self.request.user) 
+            user = self.request.user
+            data = self.request.data
+            shared_post_id = data.get("shared_post_id")
+            shared_post = None
 
-            if message.receiver != self.request.user:
+            if shared_post_id:
+                shared_post = CommunityPost.objects.select_related("community").filter(id=shared_post_id).first()
+
+                if not shared_post:
+                    raise PermissionDenied("Shared post does not exist.")
+
+                community = shared_post.community
+
+                is_sender_member = (
+                    community.created_by_id == user.id or
+                    CommunityMembership.objects.filter(community=community, user=user).exists()
+                )
+                
+                is_receiver_member = (
+                    community.created_by_id == serializer.validated_data["receiver"].id or
+                    CommunityMembership.objects.filter(community=community, user=serializer.validated_data["receiver"]).exists()
+                )
+
+                if community.visibility in ['private', 'hidden'] and not (is_sender_member and is_receiver_member):
+                    raise PermissionDenied("You can only share this post with someone who is also a community member.")
+            
+            message = serializer.save(sender=user, shared_post=shared_post)
+
+            if message.receiver != user:
                 Notification.objects.create(
                     recipient=message.receiver,
-                    sender=self.request.user,
+                    sender=user,
                     notification_type='message',
                     message=message
                 )
@@ -1205,3 +1231,50 @@ class ToggleCommentLikeView(APIView):
             "liked_by_me": liked_by_me,
             "liked_users": liked_users
         }, status=200)
+
+
+class SharePostToCommunityView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, community_id):
+        user = request.user
+        shared_post_id = request.data.get("shared_post_id")
+        message = request.data.get("content", "")
+
+        if not shared_post_id:
+            return Response({"detail": "shared_post_id is required."}, status=400)
+
+        # Validate target community
+        try:
+            target_community = Community.objects.get(id=community_id, status='active')
+        except Community.DoesNotExist:
+            return Response({"detail": "Target community not found or inactive."}, status=404)
+
+        is_creator = target_community.created_by_id == user.id
+        is_member = CommunityMembership.objects.filter(community=target_community, user=user).exists()
+
+        if not (is_creator or is_member):
+            raise PermissionDenied("You are not allowed to post in this community.")
+
+        # Get the original post
+        try:
+            original_post = CommunityPost.objects.get(id=shared_post_id)
+        except CommunityPost.DoesNotExist:
+            return Response({"detail": "Original post not found."}, status=404)
+
+        # Create new post in the target community
+        new_post = CommunityPost.objects.create(
+            author=user,
+            community=target_community,
+            content=message or original_post.content,
+            image=original_post.image,
+            video=original_post.video,
+            file=original_post.file,
+            category=original_post.category,
+            tags=original_post.tags,
+            location=original_post.location,
+            is_private=False,  # Sharing is always public by default
+            shared_from=original_post
+        )
+
+        return Response(CommunityPostSerializer(new_post, context={"request": request}).data)

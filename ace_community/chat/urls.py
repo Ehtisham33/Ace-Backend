@@ -39,7 +39,8 @@ from .views import (
     ToggleCommunityStatusView,
     ArchiveCommunityView,
     PendingApprovalMembershipsView,
-    ToggleCommentLikeView
+    ToggleCommentLikeView,
+    SharePostToCommunityView
 
 )
 
@@ -90,5 +91,6 @@ urlpatterns = [
     path('communities/<int:community_id>/toggle-status/', ToggleCommunityStatusView.as_view(), name='toggle-community-status'),
     path('communities/<int:community_id>/archive/', ArchiveCommunityView.as_view(), name='archive-community'),
     path('communities/<int:community_id>/memberships/pending-approval/', PendingApprovalMembershipsView.as_view()),
-    path('communities/<int:community_id>/posts/<int:post_id>/comments/<int:comment_id>/like/', ToggleCommentLikeView.as_view(), name='toggle-comment-like')
+    path('communities/<int:community_id>/posts/<int:post_id>/comments/<int:comment_id>/like/', ToggleCommentLikeView.as_view(), name='toggle-comment-like'),
+    path("communities/<int:community_id>/share_post/", SharePostToCommunityView.as_view(), name="share-post-to-community"),
 ]
