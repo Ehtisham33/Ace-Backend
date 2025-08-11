@@ -36,7 +36,7 @@ class Message(models.Model):
             try:
 
                 mime_type, _ = mimetypes.guess_type(self.file.name)
-                if mime_type and mime_type.startswith('audio'):
+                if mime_type and mime_type.endswith('mp3'):
                     audio = MutagenFile(self.file)
                     self.duration = round(audio.info.length, 2) if audio and audio.info else None
                 else:
@@ -84,7 +84,7 @@ class ActivityMessage(models.Model):
             try:
                 # Optional safety check: only proceed if MIME is audio
                 mime_type, _ = mimetypes.guess_type(self.file.name)
-                if mime_type and mime_type.startswith('audio'):
+                if mime_type and mime_type.endswith('mp3'):
                     audio = MutagenFile(self.file)
                     self.duration = round(audio.info.length, 2) if audio and audio.info else None
                 else:
@@ -147,7 +147,7 @@ class MarketplaceMessage(models.Model):
             try:
                 # Optional safety check: only proceed if MIME is audio
                 mime_type, _ = mimetypes.guess_type(self.file.name)
-                if mime_type and mime_type.startswith('audio'):
+                if mime_type and mime_type.endswith('mp3'):
                     audio = MutagenFile(self.file)
                     self.duration = round(audio.info.length, 2) if audio and audio.info else None
                 else:
@@ -303,7 +303,7 @@ class CommunityMessage(models.Model):
             try:
                 # Optional safety check: only proceed if MIME is audio
                 mime_type, _ = mimetypes.guess_type(self.file.name)
-                if mime_type and mime_type.startswith('audio'):
+                if mime_type and mime_type.endswith('mp3'):
                     audio = MutagenFile(self.file)
                     self.duration = round(audio.info.length, 2) if audio and audio.info else None
                 else:
