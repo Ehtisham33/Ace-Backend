@@ -18,6 +18,7 @@ urlpatterns = [
 
     # Your App APIs
     path('api/v1/', include('chat.urls')), 
+    path('api/v1/', include('core.urls')), 
 ]
 
 # ✅ This line must NOT be indented
