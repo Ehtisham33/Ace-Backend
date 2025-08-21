@@ -126,7 +126,7 @@ class ClubAddCourtSerializer(serializers.ModelSerializer):
             validated_data['club'] = club
             validated_data['created_by'] = user
 
-            slot_durations = validated_data.pop('slot_durations', [])
+            slot_durations = validated_data.pop('slot_durations_input', [])
 
             if not slot_durations:
                 raise ValidationError("Slot durations are required.")
@@ -150,7 +150,7 @@ class ClubAddCourtSerializer(serializers.ModelSerializer):
     
     def update(self, instance, validated_data):
         try:
-            slot_durations = validated_data.pop('slot_durations', None)
+            slot_durations = validated_data.pop('slot_durations_input', None)
 
             if slot_durations is not None:
                 if not isinstance(slot_durations, list):
