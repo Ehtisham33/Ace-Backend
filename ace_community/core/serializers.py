@@ -4,7 +4,10 @@ from django.db import IntegrityError
 from django.db import models
 from django.db.models import fields
 from rest_framework import serializers
+from django.db import transaction
 from rest_framework.pagination import PageNumberPagination
+
+import json
 
 from laravel_models.models import Users as user, Clubs
 from core.models import (
@@ -25,8 +28,8 @@ class ClubAddCourtSerializer(serializers.ModelSerializer):
             model = CourtSlotDuration
             fields = ['duration']
 
-    slot_durations = SlotDurationSerializer(many= True, write_only = True)
-    slot_durations_data = SlotDurationSerializer(source='courtslotduration_set', many=True, read_only=True)
+    slot_durations = serializers.JSONField(write_only=True)
+    slot_durations = serializers.SerializerMethodField()
 
 
     class Meta:
@@ -34,11 +37,14 @@ class ClubAddCourtSerializer(serializers.ModelSerializer):
         fields = ['id','uuid','club','name','surface_type','court_color','court_type',
         'court_size','court_image','select_type','sport','booking_visibility','is_active',
         'buffer_time_btw_slots','private_notes', 'slot_durations','created_by','created_at',
-        'updated_at','slot_durations_data'
+        'updated_at'
                 
         ]
         read_only_fields = ['id','uuid','club','created_by','created_at','updated_at']
 
+    def get_slot_durations(self, obj):
+        return list(obj.courtslotduration_set.values_list('duration', flat=True))
+    
     def validate_court_image(self, image):
         if image and image.size > MAX_IMAGE_SIZE_MB * 1024 * 1024:
             raise serializers.ValidationError(f"Image size must be under {MAX_IMAGE_SIZE_MB}MB.")
@@ -52,17 +58,27 @@ class ClubAddCourtSerializer(serializers.ModelSerializer):
         return value
     
     def validate_slot_durations(self, value):
-        slot_duration_wrong = []
+        # Allow JSON string or Python list
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError:
+                raise ValidationError("slot_durations must be valid JSON.")
+
+        # Ensure it's a list
+        if not isinstance(value, list):
+            raise ValidationError("slot_durations must be a list of integers.")
 
         if not value:
-            raise ValidationError("court slot durations must be required")
-        for slot_duration in value:
-            if slot_duration['duration'] < 60 or slot_duration['duration'] > 300:
-                slot_duration_wrong.append(slot_duration['duration'])
-        if slot_duration_wrong:    
-            raise ValidationError(f"Invalid Court Slot durations: {slot_duration_wrong}. Must be between 60–300 min.")
-        
-        return value 
+            raise ValidationError("court slot durations must be required.")
+
+        # Validate each duration
+        invalid_durations = [d for d in value if not isinstance(d, int) or d < 60 or d > 300]
+
+        if invalid_durations:
+            raise ValidationError(f"Invalid Court Slot durations: {invalid_durations}. Must be between 60–300 minutes.")
+
+        return value
     
     def validate_select_type(self, value):
         if value == 'sport' and not self.initial_data.get("sport"):
@@ -107,43 +123,64 @@ class ClubAddCourtSerializer(serializers.ModelSerializer):
 
             if not club:
                 raise ValidationError("Club not found for this user.")
-            
+
             validated_data['club'] = club
             validated_data['created_by'] = user
 
-            slot_durations = validated_data.pop('slot_durations')
-            court = ClubCourt.objects.create(**validated_data)
+            slot_durations = validated_data.pop('slot_durations', [])
 
-            for slot in slot_durations:
-                CourtSlotDuration.objects.create(club_court=court, duration=slot['duration'])
+            # ✅ Pre-check for empty durations
+            if not slot_durations:
+                raise ValidationError("Slot durations are required.")
+
+            # ✅ Validate durations explicitly before creating court
+            invalid_durations = [d for d in slot_durations if not isinstance(d, int) or d < 60 or d > 300]
+            if invalid_durations:
+                raise ValidationError(f"Invalid Court Slot durations: {invalid_durations}. Must be between 60–300 minutes.")
+
+            # ✅ Use atomic transaction to ensure rollback on failure
+            with transaction.atomic():
+                court = ClubCourt.objects.create(**validated_data)
+                for duration in slot_durations:
+                    CourtSlotDuration.objects.create(club_court=court, duration=duration)
+
             return court
-        
-        except IntegrityError as e:
-            raise ValidationError(f"{'error'} : A court with this name already exists for this club.")
-        
+
+        except IntegrityError:
+            raise ValidationError("A court with this name already exists for this club.")
+
         except Exception as e:
-            raise ValidationError(f"{'error'} : Could not create court. Reason: {e}")
+            raise ValidationError(f"Could not create court. Reason: {e}")
     
     def update(self, instance, validated_data):
         try:
             slot_durations = validated_data.pop('slot_durations', None)
 
-            for attr, value in validated_data.items():
-                setattr(instance, attr, value)
-            instance.save()
-
+            # ✅ Validate slot durations before doing anything
             if slot_durations is not None:
-                CourtSlotDuration.objects.filter(club_court= instance).delete()
-                for slot in slot_durations:
-                    CourtSlotDuration.objects.create(club_court= instance, duration = slot['duration'])
+                if not isinstance(slot_durations, list):
+                    raise ValidationError("slot_durations must be a list.")
+                invalid = [d for d in slot_durations if not isinstance(d, int) or d < 60 or d > 300]
+                if invalid:
+                    raise ValidationError(f"Invalid Court Slot durations: {invalid}. Must be between 60–300 minutes.")
+
+            # ✅ Ensure all or nothing with transaction
+            with transaction.atomic():
+                for attr, value in validated_data.items():
+                    setattr(instance, attr, value)
+                instance.save()
+
+                if slot_durations is not None:
+                    CourtSlotDuration.objects.filter(club_court=instance).delete()
+                    for duration in slot_durations:
+                        CourtSlotDuration.objects.create(club_court=instance, duration=duration)
 
             return instance
-        
-        except IntegrityError as e:
-            raise ValidationError(f"{'error'} : A court with this name already exists for this club.")
-        
+
+        except IntegrityError:
+            raise ValidationError("A court with this name already exists for this club.")
         except Exception as e:
-            raise ValidationError(f"{'error'} : Could not create court. Reason: {e}")
+            raise ValidationError(f"Could not update court. Reason: {e}")
         
 
 class ClubAddPriceListSerializer(serializers.ModelSerializer):

@@ -26,6 +26,14 @@ class AddCourtView(APIView):
 
     def get(self, request):
         user = self.request.user
+        court_uuid = request.query_params.get("uuid")
+
+        if court_uuid:
+            court_data = ClubCourt.objects.filter(uuid = court_uuid, created_by = user).first()
+            if court_data:
+                serializer = ClubAddCourtSerializer(court_data)
+                return Response({"message": "Specific club court", "data": serializer.data}, status=status.HTTP_200_OK)
+            return Response({"error": "Club court does not exist"}, status=status.HTTP_404_NOT_FOUND)
 
         try:
             club_court = ClubCourt.objects.filter(created_by_id=user.id)
