@@ -5,6 +5,6 @@ from core.views import (
 
 urlpatterns = [
     # 🔹 Direct Chat (1:1)
-    path('club/add-court/', AddCourtView.as_view(), name='add-court'),
+    path('club/court/', AddCourtView.as_view(), name='add-court'),
 
 ]
