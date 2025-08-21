@@ -28,7 +28,7 @@ class ClubAddCourtSerializer(serializers.ModelSerializer):
             model = CourtSlotDuration
             fields = ['duration']
 
-    slot_durations = serializers.JSONField(write_only=True)
+    slot_durations_input = serializers.JSONField(write_only=True)
     slot_durations = serializers.SerializerMethodField()
 
 
@@ -37,7 +37,7 @@ class ClubAddCourtSerializer(serializers.ModelSerializer):
         fields = ['id','uuid','club','name','surface_type','court_color','court_type',
         'court_size','court_image','select_type','sport','booking_visibility','is_active',
         'buffer_time_btw_slots','private_notes', 'slot_durations','created_by','created_at',
-        'updated_at'
+        'updated_at','slot_durations_input'
                 
         ]
         read_only_fields = ['id','uuid','club','created_by','created_at','updated_at']
@@ -72,7 +72,6 @@ class ClubAddCourtSerializer(serializers.ModelSerializer):
         if not value:
             raise ValidationError("court slot durations must be required.")
 
-        # Validate each duration
         invalid_durations = [d for d in value if not isinstance(d, int) or d < 60 or d > 300]
 
         if invalid_durations:
@@ -129,16 +128,13 @@ class ClubAddCourtSerializer(serializers.ModelSerializer):
 
             slot_durations = validated_data.pop('slot_durations', [])
 
-            # ✅ Pre-check for empty durations
             if not slot_durations:
                 raise ValidationError("Slot durations are required.")
 
-            # ✅ Validate durations explicitly before creating court
             invalid_durations = [d for d in slot_durations if not isinstance(d, int) or d < 60 or d > 300]
             if invalid_durations:
                 raise ValidationError(f"Invalid Court Slot durations: {invalid_durations}. Must be between 60–300 minutes.")
 
-            # ✅ Use atomic transaction to ensure rollback on failure
             with transaction.atomic():
                 court = ClubCourt.objects.create(**validated_data)
                 for duration in slot_durations:
@@ -156,7 +152,6 @@ class ClubAddCourtSerializer(serializers.ModelSerializer):
         try:
             slot_durations = validated_data.pop('slot_durations', None)
 
-            # ✅ Validate slot durations before doing anything
             if slot_durations is not None:
                 if not isinstance(slot_durations, list):
                     raise ValidationError("slot_durations must be a list.")
@@ -164,7 +159,6 @@ class ClubAddCourtSerializer(serializers.ModelSerializer):
                 if invalid:
                     raise ValidationError(f"Invalid Court Slot durations: {invalid}. Must be between 60–300 minutes.")
 
-            # ✅ Ensure all or nothing with transaction
             with transaction.atomic():
                 for attr, value in validated_data.items():
                     setattr(instance, attr, value)
