@@ -1,5 +1,6 @@
 from os import stat
 import secrets
+import uuid
 from django.core.exceptions import ValidationError
 from django.shortcuts import render
 from rest_framework import generics, permissions, status
@@ -109,5 +110,27 @@ class AddCourtView(APIView):
             return Response({"error":{e}}, status= 400)
 
         
+class ToggleStatusCourtView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
 
+    def post(self, request):
+        user = self.request.user
+        court_uuid = request.query_params.get("uuid")
+
+        if not court_uuid:
+            return Response({"error":"court uuid is missing"}, status= 404)
         
+        court = ClubCourt.objects.filter(uuid = court_uuid , created_by = user).first()
+        
+        if not court:
+            return Response({"error": "Club court does not exist"}, status=status.HTTP_404_NOT_FOUND)
+        
+        if court.is_active == True:
+            court.is_active = False
+            court.save()
+            return Response({"message":"court status is deactive"}, status = 200)
+        if court.is_active == False:
+            court.is_active = True
+            court.save()
+            return Response({"message":"court status is active"}, status = 200)            
+
