@@ -16,6 +16,8 @@ from core.models import (
 
 )
 
+MAX_IMAGE_SIZE_MB = 5
+
 class ClubAddCourtSerializer(serializers.ModelSerializer):
     
     class SlotDurationSerializer(serializers.ModelSerializer):
@@ -36,7 +38,13 @@ class ClubAddCourtSerializer(serializers.ModelSerializer):
                 
         ]
         read_only_fields = ['id','uuid','club','created_by','created_at','updated_at']
-    
+
+    def validate_court_image(self, image):
+        if image and image.size > MAX_IMAGE_SIZE_MB * 1024 * 1024:
+            raise serializers.ValidationError(f"Image size must be under {MAX_IMAGE_SIZE_MB}MB.")
+        return image
+
+        
     def validate_buffer_time_btw_slots(self, value):
         if value !=30:
             raise ValidationError("buffer time between slot must be 30 ")
@@ -141,15 +149,26 @@ class ClubAddCourtSerializer(serializers.ModelSerializer):
 class ClubAddPriceListSerializer(serializers.ModelSerializer):
 
     class PriceSlotSerializer(serializers.ModelSerializer):
-        model = PriceSlot
-        fields = [
-            'id','uuid','is_checked','days_of_week','interval_number',
-            'start_time','end_time','created_at','updated_at'
-        ]
+        
+
+        class Meta:
+            model = PriceSlot
+            fields = [
+                'id','uuid','is_checked','days_of_week','interval_number',
+                'start_time','end_time','created_at','updated_at'
+            ]
+    
+    class CourtSlotPriceSerializer(serializers.ModelSerializer):
+
+        class Meta:
+            model = CourtSlotPrice
+            fields = [
+                'id', 'uuid', 'price','created_at', 'updated_at'
+            ]
     
 
     class Meta:
         model = PriceList
         fields = [
-            'id','uuid','name','start_time','end_time','is_active'
+            'id','uuid','name','start_time','end_time','is_active','created_at','updated_at'
         ]
