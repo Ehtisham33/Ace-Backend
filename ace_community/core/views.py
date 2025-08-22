@@ -65,7 +65,7 @@ class AddCourtView(APIView):
         except ClubCourt.DoesNotExist:
             return Response({"error":"club court does not exist"}, status = 404)
         
-        serializer = ClubAddCourtSerializer(instance = court, data = request.data, partial = False)
+        serializer = ClubAddCourtSerializer(instance = court, data = request.data, partial = True)
 
         if serializer.is_valid():
             serializer.save()
