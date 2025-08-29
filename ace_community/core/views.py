@@ -8,15 +8,23 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.decorators import action
+from django.db import transaction
+
+import json
 
 from laravel_models.models import Users , Clubs, Players
 from core.models import (
     ClubCourt,
-    CourtSlotDuration
+    CourtSlotDuration,
+    CourtSlotPrice,
+    PriceSlot,
+    PriceList,
+    SlotGroup   
 )
 
 from core.serializers import (
-    ClubAddCourtSerializer
+    ClubAddCourtSerializer,
+    PriceSlotSerializer
 )
 
 # Create your views here.
@@ -73,26 +81,6 @@ class AddCourtView(APIView):
         else:
             return Response({"error": serializer.errors}, status = 400)
 
-    def patch(self, request):
-        court_uuid = request.query_params.get("uuid")
-
-        if not court_uuid:
-            return Response({"error": "court uuid is missing "},status = 400)
-        
-        try:
-            court = ClubCourt.objects.get(uuid = court_uuid , created_by = request.user)
-        except ClubCourt.DoesNotExist:
-            return Response({"error":"club court does not exist"}, status = 404)
-        
-        serializer = ClubAddCourtSerializer(instance = court, data = request.data, partial = True)
-
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message": "club courts partially updated successfully ","data":serializer.data}, status = 200)
-        else:
-            return Response({"error": serializer.errors}, status = 400)
-
-
     def delete(self,request):
         court_uuid = request.query_params.get("uuid")
 
@@ -133,4 +121,112 @@ class ToggleStatusCourtView(APIView):
             court.is_active = True
             court.save()
             return Response({"message":"court status is active"}, status = 200)            
+
+
+class AddSlotView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        slot_group_uuid = request.query_params.get("uuid")
+
+        if not slot_group_uuid:
+            return Response({"error": "slot_group_uuid is required"}, status=400)
+
+        slot_group = SlotGroup.objects.filter(uuid=slot_group_uuid, created_by=user).first()
+        if not slot_group:
+            return Response({"error": "SlotGroup not found"}, status=404)
+
+        slots = PriceSlot.objects.filter(slot_group=slot_group).order_by("days", "start_time")
+        slot_serializer = PriceSlotSerializer(slots, many=True)
+
+        return Response({
+            "message": "Slot group fetched successfully",
+            "data": {
+                "slot_group_uuid": str(slot_group.uuid),
+                "slots": slot_serializer.data
+            }
+        }, status=200)
+
+    def post(self, request):
+        user = request.user
+
+        try:
+            slot_groups_data = json.loads(request.data.get("slot_groups", "[]"))
+        except json.JSONDecodeError:
+            return Response({"error": "slot_groups is not valid JSON"}, status=400)
+
+        if not isinstance(slot_groups_data, list) or not slot_groups_data:
+            return Response({"error": "slot_groups must be a non-empty list"}, status=400)
+
+        created_or_updated_groups = []
+
+        try:
+            with transaction.atomic():
+                for group_data in slot_groups_data:
+                    slot_uuid = group_data.get("slot_uuid")
+                    slots = group_data.get("slots", [])
+
+                    if not isinstance(slots, list) or not slots:
+                        return Response({"error": "slots must be a non-empty list"}, status=400)
+
+                    # UPDATE
+                    if slot_uuid:
+                        slot_group = SlotGroup.objects.filter(uuid=slot_uuid, created_by=user).first()
+                        if not slot_group:
+                            return Response({"error": f"SlotGroup with uuid {slot_uuid} not found"}, status=404)
+                        PriceSlot.objects.filter(slot_group=slot_group).delete()
+                        slot_group.save()
+
+                    # CREATE
+                    else:
+                        slot_group = SlotGroup.objects.create(created_by=user)
+
+                    for slot_data in slots:
+                        serializer = PriceSlotSerializer(data=slot_data, context={'request': request})
+                        serializer.is_valid(raise_exception=True)
+                        serializer.save(slot_group=slot_group, created_by=user)
+
+                    # Response block
+                    saved_slots = PriceSlot.objects.filter(slot_group=slot_group).order_by("days", "start_time")
+                    slot_serializer = PriceSlotSerializer(saved_slots, many=True)
+
+                    created_or_updated_groups.append({
+                        "slot_group_uuid": str(slot_group.uuid),
+                        "slots": [
+                            {
+                                "days": slot["days"],
+                                "interval_number": slot["interval_number"],
+                                "start_time": slot["start_time"][:5],
+                                "end_time": slot["end_time"][:5],
+                                "is_checked": slot["is_checked"]
+                            }
+                            for slot in slot_serializer.data
+                        ]
+                    })
+
+            return Response({
+                "message": "Slot groups processed successfully",
+                "result": created_or_updated_groups
+            }, status=200)
+
+        except Exception as e:
+            return Response({"error": f"Slot processing failed: {str(e)}"}, status=400)
+
+    def delete(self, request):
+        user = request.user
+        slot_group_uuid = request.query_params.get("slot_group_uuid")
+
+        if not slot_group_uuid:
+            return Response({"error": "slot_group_uuid is required"}, status=400)
+
+        slot_group = SlotGroup.objects.filter(uuid=slot_group_uuid, created_by=user).first()
+        if not slot_group:
+            return Response({"error": "SlotGroup not found"}, status=404)
+
+        try:
+            slot_group.delete()
+            return Response({"message": "SlotGroup deleted successfully"}, status=200)
+        except Exception as e:
+            return Response({"error": f"Failed to delete: {e}"}, status=400)
 

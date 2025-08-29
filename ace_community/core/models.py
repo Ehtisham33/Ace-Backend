@@ -112,9 +112,10 @@ class PriceList(models.Model):
     id = models.BigAutoField(primary_key=True)
     uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     name = models.CharField(max_length=35 , null=False ,blank=False, unique=True)
-    start_time = models.DateTimeField(null=False, blank=False)
-    end_time = models.DateTimeField(null=False, blank=False)
+    start_time = models.DateTimeField(null=True, blank=True, unique= True)
+    end_time = models.DateTimeField(null=True, blank=True , unique= True)
     is_active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(Users, on_delete=models.CASCADE, null = True , blank = True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at =models.DateTimeField(auto_now=True, null=True, blank= True)
 
@@ -132,16 +133,37 @@ class PriceList(models.Model):
             models.Index(fields=['end_time']),
             models.Index(fields=['is_active']),
             models.Index(fields=['created_at']),
-            models.Index(fields=['updated_at'])             
+            models.Index(fields=['updated_at']),
+            models.Index(fields=['created_by'])             
         ]
+
+
+class SlotGroup(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    price_list = models.ForeignKey(PriceList, on_delete=models.CASCADE, related_name="slot_groups", null = True , blank=True)
+    created_by = models.ForeignKey(Users, on_delete=models.CASCADE, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+
+    class Meta:
+        db_table = "slot_group"
+        indexes = [
+            models.Index(fields=['uuid']),
+            models.Index(fields=['price_list']),
+            models.Index(fields=['created_by']),
+        ]
+        
+    def __str__(self):
+        return f"Slot Group for {self.price_list.name if self.price_list else 'N/A'}"
 
 
 class PriceSlot(models.Model):
     id = models.BigAutoField(primary_key=True)
     uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
-    price_list = models.ForeignKey(PriceList, on_delete=models.CASCADE)
+    slot_group = models.ForeignKey(SlotGroup, on_delete=models.CASCADE , null=True , blank=True)
     is_checked = models.BooleanField(default=False)
-    days_of_week = models.CharField(choices=[
+    days = models.CharField(choices=[
         ('mon','Mon'),
         ('tue','Tue'),
         ('wed','Wed'),
@@ -151,25 +173,29 @@ class PriceSlot(models.Model):
         ('sun','Sun')
     ] , max_length=4 , null=True, blank=True)
     interval_number = models.IntegerField(null=True,blank=True)
-    start_time = models.DateTimeField(null=True , blank=True)
-    end_time = models.DateTimeField(null=True, blank=True)
+    start_time = models.TimeField(null=True , blank=True)
+    end_time = models.TimeField(null=True, blank=True)
+    created_by = models.ForeignKey(Users, on_delete=models.CASCADE, null = True , blank = True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True , null=True, blank = True)
 
     def __str__(self):
-        return f'{self.price_list.name}  slot interval {self.interval_number} start time {self.start_time} end time {self.end_time}'
+        pl_name = self.slot_group.price_list.name if self.slot_group and self.slot_group.price_list else "No Price List"
+        
+        return f'{pl_name} slot interval {self.interval_number} start {self.start_time} end {self.end_time}'
+
     
     class Meta:
         managed = True
         ordering = ['created_at']
-        unique_together = ('price_list', 'days_of_week', 'interval_number')
         db_table ='price_slot'
         indexes = [
         models.Index(fields=['uuid']),
-        models.Index(fields=['price_list']),
-        models.Index(fields=['days_of_week']),
+        models.Index(fields=['slot_group']),
+        models.Index(fields=['days']),
         models.Index(fields=['interval_number']),
-        models.Index(fields=['updated_at'])
+        models.Index(fields=['updated_at']),
+        models.Index(fields=['created_by'])
     ]
     
 
@@ -177,26 +203,30 @@ class CourtSlotPrice(models.Model):
     id = models.BigAutoField(primary_key=True)
     uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     club_court = models.ForeignKey(ClubCourt, on_delete=models.CASCADE)
-    price_slot = models.ForeignKey(PriceSlot, on_delete= models.CASCADE)
+    price_slot_group = models.ForeignKey(SlotGroup, on_delete= models.CASCADE, related_name= 'court_slot_price', null=True, blank=True)
+    enforce_slot_start_time = models.BooleanField(default=False)
+    is_checked_duration = models.BooleanField(default=True)
     slot_duration = models.ForeignKey(CourtSlotDuration, on_delete=models.CASCADE, null=True, blank=True)
     prices = models.IntegerField(null=True, blank=True)
-    created_by = models.ForeignKey(Users, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(Users, on_delete=models.CASCADE , null = True , blank= True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True, null= True, blank= True)
 
     def __str__(self):
-        return f'{self.club_court.name} - {self.price_slot.price_list.name} - {self.slot_duration.duration} - {self.prices}'
+        return f'{self.club_court.name} - {self.price_slot_group.price_list.name} - {self.slot_duration.duration if self.slot_duration else "N/A"} - {self.prices}'
+
     
 
     class Meta:
         managed = True
         ordering = ['created_at']
-        unique_together = ('club_court', 'price_slot', 'slot_duration')
+        unique_together = ('club_court', 'price_slot_group', 'slot_duration')
         db_table = 'court_slot_price'
         indexes = [
             models.Index(fields=['uuid']),
             models.Index(fields=['club_court']),
-            models.Index(fields=['price_slot']),
+            models.Index(fields=['price_slot_group']),
             models.Index(fields=['created_at']),
-            models.Index(fields=['updated_at'])
+            models.Index(fields=['updated_at']),
+            models.Index(fields=['created_by'])
         ]

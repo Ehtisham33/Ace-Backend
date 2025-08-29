@@ -2,7 +2,7 @@ import os
 from rest_framework.exceptions import ValidationError
 from django.db import IntegrityError
 from django.db import models
-from django.db.models import fields
+from django.db.models import Model, fields
 from rest_framework import serializers
 from django.db import transaction
 from rest_framework.pagination import PageNumberPagination
@@ -13,9 +13,10 @@ from laravel_models.models import Users as user, Clubs
 from core.models import (
     ClubCourt,
     CourtSlotDuration,
-    PriceList,
+    CourtSlotPrice,
     PriceSlot,
-    CourtSlotPrice
+    PriceList,
+    SlotGroup
 
 )
 
@@ -175,31 +176,86 @@ class ClubAddCourtSerializer(serializers.ModelSerializer):
             raise ValidationError("A court with this name already exists for this club.")
         except Exception as e:
             raise ValidationError(f"Could not update court. Reason: {e}")
-        
 
-class ClubAddPriceListSerializer(serializers.ModelSerializer):
 
-    class PriceSlotSerializer(serializers.ModelSerializer):
-        
+class PriceSlotSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PriceSlot
+        fields = ['id', 'uuid', 'is_checked', 'days', 'interval_number', 'start_time', 'end_time', 'created_at', 'updated_at', 'created_by']
+        read_only_fields = ['id', 'uuid', 'created_by', 'created_at', 'updated_at']
 
-        class Meta:
-            model = PriceSlot
-            fields = [
-                'id','uuid','is_checked','days_of_week','interval_number',
-                'start_time','end_time','created_at','updated_at'
-            ]
-    
-    class CourtSlotPriceSerializer(serializers.ModelSerializer):
+    def validate(self, data):
+        if data.get('is_checked') is not True:
+            raise ValidationError("is_checked is required and must be True.")
+        for field in ['days', 'interval_number', 'start_time', 'end_time']:
+            if not data.get(field):
+                raise ValidationError(f"{field} is required.")
+        if data['start_time'] >= data['end_time']:
+            raise ValidationError("start_time must be less than end_time.")
+        return data
 
-        class Meta:
-            model = CourtSlotPrice
-            fields = [
-                'id', 'uuid', 'price','created_at', 'updated_at'
-            ]
-    
+
+class SlotGroupCreateSerializer(serializers.ModelSerializer):
+    slots = PriceSlotSerializer(many=True, write_only=True)
+
+    class Meta:
+        model = SlotGroup
+        fields = ['id', 'uuid', 'slots', 'created_at', 'updated_at', 'created_by']
+        read_only_fields = ['id', 'uuid', 'created_by', 'created_at', 'updated_at']
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        slots_data = validated_data.pop('slots', [])
+
+        with transaction.atomic():
+            slot_group = SlotGroup.objects.create(
+                created_by=user  # Removed slot_number
+            )
+            for slot in slots_data:
+                PriceSlot.objects.create(
+                    slot_group=slot_group,
+                    created_by=user,
+                    **slot
+                )
+
+        return slot_group
+
+
+class SlotGroupLinkSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SlotGroup
+        fields = ['id','uuid']  # Only existing SlotGroup UUIDs
+
+
+class PriceListCreateSerializer(serializers.ModelSerializer):
+    slot_groups = SlotGroupLinkSerializer(many=True, write_only=True)
 
     class Meta:
         model = PriceList
-        fields = [
-            'id','uuid','name','start_time','end_time','is_active','created_at','updated_at'
-        ]
+        fields = ['id', 'uuid', 'name', 'start_time', 'end_time', 'is_active', 'created_at', 'updated_at', 'slot_groups', 'created_by']
+        read_only_fields = ['id', 'uuid', 'created_by', 'created_at', 'updated_at']
+
+    def validate(self, data):
+        if data['start_time'] >= data['end_time']:
+            raise ValidationError("start_time must be less than end_time.")
+        return data
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        slot_groups_data = validated_data.pop('slot_groups', [])
+
+        if not slot_groups_data:
+            raise ValidationError("At least one slot group must be linked.")
+
+        with transaction.atomic():
+            price_list = PriceList.objects.create(created_by=user, **validated_data)
+
+            for group in slot_groups_data:
+                slot_group = SlotGroup.objects.filter(uuid=group['uuid'], created_by=user).first()
+                if not slot_group:
+                    raise ValidationError(f"SlotGroup with UUID {group['uuid']} not found or not owned by user.")
+                slot_group.price_list = price_list
+                slot_group.save()
+
+        return price_list
+
