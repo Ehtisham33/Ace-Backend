@@ -178,15 +178,23 @@ class AddSlotView(APIView):
                             return Response({"error": f"SlotGroup with uuid {slot_uuid} not found"}, status=404)
                         PriceSlot.objects.filter(slot_group=slot_group).delete()
                         slot_group.save()
-
-                    # CREATE
                     else:
                         slot_group = SlotGroup.objects.create(created_by=user)
 
+                    # ✅ Validate all slots first
+                    validated_slots = []
                     for slot_data in slots:
                         serializer = PriceSlotSerializer(data=slot_data, context={'request': request})
                         serializer.is_valid(raise_exception=True)
-                        serializer.save(slot_group=slot_group, created_by=user)
+                        validated_slots.append(serializer.validated_data)
+
+                    # ✅ Save all slots only if validation passes
+                    for validated_data in validated_slots:
+                        PriceSlot.objects.create(
+                            slot_group=slot_group,
+                            created_by=user,
+                            **validated_data
+                        )
 
                     # Response block
                     saved_slots = PriceSlot.objects.filter(slot_group=slot_group).order_by("days", "start_time")
