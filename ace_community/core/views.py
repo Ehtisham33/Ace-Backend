@@ -153,54 +153,40 @@ class AddSlotView(APIView):
         user = request.user
 
         try:
-            slot_groups_data = json.loads(request.data.get("slot_groups", "[]"))
+            slots = json.loads(request.data.get("slots", "[]"))
         except json.JSONDecodeError:
-            return Response({"error": "slot_groups is not valid JSON"}, status=400)
+            return Response({"error": "slots is not valid JSON"}, status=400)
 
-        if not isinstance(slot_groups_data, list) or not slot_groups_data:
-            return Response({"error": "slot_groups must be a non-empty list"}, status=400)
-
-        created_or_updated_groups = []
+        if not isinstance(slots, list) or not slots:
+            return Response({"error": "slots must be a non-empty list"}, status=400)
 
         try:
             with transaction.atomic():
-                for group_data in slot_groups_data:
-                    slot_uuid = group_data.get("slot_uuid")
-                    slots = group_data.get("slots", [])
+                # ✅ Validate all slots
+                validated_slots = []
+                for slot_data in slots:
+                    serializer = PriceSlotSerializer(data=slot_data, context={'request': request})
+                    serializer.is_valid(raise_exception=True)
+                    validated_slots.append(serializer.validated_data)
 
-                    if not isinstance(slots, list) or not slots:
-                        return Response({"error": "slots must be a non-empty list"}, status=400)
+                # ✅ Create new SlotGroup
+                slot_group = SlotGroup.objects.create(created_by=user)
 
-                    # UPDATE
-                    if slot_uuid:
-                        slot_group = SlotGroup.objects.filter(uuid=slot_uuid, created_by=user).first()
-                        if not slot_group:
-                            return Response({"error": f"SlotGroup with uuid {slot_uuid} not found"}, status=404)
-                        PriceSlot.objects.filter(slot_group=slot_group).delete()
-                        slot_group.save()
-                    else:
-                        slot_group = SlotGroup.objects.create(created_by=user)
+                # ✅ Create all slots
+                for validated_data in validated_slots:
+                    PriceSlot.objects.create(
+                        slot_group=slot_group,
+                        created_by=user,
+                        **validated_data
+                    )
 
-                    # ✅ Validate all slots first
-                    validated_slots = []
-                    for slot_data in slots:
-                        serializer = PriceSlotSerializer(data=slot_data, context={'request': request})
-                        serializer.is_valid(raise_exception=True)
-                        validated_slots.append(serializer.validated_data)
+                # ✅ Prepare response
+                saved_slots = PriceSlot.objects.filter(slot_group=slot_group).order_by("days", "start_time")
+                slot_serializer = PriceSlotSerializer(saved_slots, many=True)
 
-                    # ✅ Save all slots only if validation passes
-                    for validated_data in validated_slots:
-                        PriceSlot.objects.create(
-                            slot_group=slot_group,
-                            created_by=user,
-                            **validated_data
-                        )
-
-                    # Response block
-                    saved_slots = PriceSlot.objects.filter(slot_group=slot_group).order_by("days", "start_time")
-                    slot_serializer = PriceSlotSerializer(saved_slots, many=True)
-
-                    created_or_updated_groups.append({
+                return Response({
+                    "message": "Slot group created successfully",
+                    "data": {
                         "slot_group_uuid": str(slot_group.uuid),
                         "slots": [
                             {
@@ -212,15 +198,75 @@ class AddSlotView(APIView):
                             }
                             for slot in slot_serializer.data
                         ]
-                    })
-
-            return Response({
-                "message": "Slot groups processed successfully",
-                "result": created_or_updated_groups
-            }, status=200)
+                    }
+                }, status=201)
 
         except Exception as e:
-            return Response({"error": f"Slot processing failed: {str(e)}"}, status=400)
+            return Response({"error": f"Slot group creation failed: {str(e)}"}, status=400)
+
+    def put(self, request):
+        user = request.user
+        slot_uuid = request.query_params.get("uuid")
+
+        if not slot_uuid:
+            return Response({"error": "slot_group uuid is required"}, status=400)
+
+        slot_group = SlotGroup.objects.filter(uuid=slot_uuid, created_by=user).first()
+        if not slot_group:
+            return Response({"error": f"SlotGroup with uuid {slot_uuid} not found"}, status=404)
+
+        try:
+            slots = json.loads(request.data.get("slots", "[]"))
+        except json.JSONDecodeError:
+            return Response({"error": "slots is not valid JSON"}, status=400)
+
+        if not isinstance(slots, list) or not slots:
+            return Response({"error": "slots must be a non-empty list"}, status=400)
+
+        try:
+            with transaction.atomic():
+                # ✅ Validate all slots before touching DB
+                validated_slots = []
+                for slot_data in slots:
+                    serializer = PriceSlotSerializer(data=slot_data, context={'request': request})
+                    serializer.is_valid(raise_exception=True)
+                    validated_slots.append(serializer.validated_data)
+
+                # ✅ Delete old slots AFTER validation
+                PriceSlot.objects.filter(slot_group=slot_group).delete()
+
+                # ✅ Create new slots
+                for validated_data in validated_slots:
+                    PriceSlot.objects.create(
+                        slot_group=slot_group,
+                        created_by=user,
+                        **validated_data
+                    )
+
+                # ✅ Prepare response
+                saved_slots = PriceSlot.objects.filter(slot_group=slot_group).order_by("days", "start_time")
+                slot_serializer = PriceSlotSerializer(saved_slots, many=True)
+
+                return Response({
+                    "message": "Slot group updated successfully",
+                    "data": {
+                        "slot_group_uuid": str(slot_group.uuid),
+                        "slots": [
+                            {
+                                "days": slot["days"],
+                                "interval_number": slot["interval_number"],
+                                "start_time": slot["start_time"][:5],
+                                "end_time": slot["end_time"][:5],
+                                "is_checked": slot["is_checked"]
+                            }
+                            for slot in slot_serializer.data
+                        ]
+                    }
+                }, status=200)
+
+        except Exception as e:
+            return Response({"error": f"Slot group update failed: {str(e)}"}, status=400)
+
 
     def delete(self, request):
         user = request.user
