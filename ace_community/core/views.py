@@ -152,13 +152,11 @@ class AddSlotView(APIView):
     def post(self, request):
         user = request.user
 
-        try:
-            slots = json.loads(request.data.get("slots", "[]"))
-        except json.JSONDecodeError:
-            return Response({"error": "slots is not valid JSON"}, status=400)
+        slots = request.data.get("slots", [])
 
         if not isinstance(slots, list) or not slots:
             return Response({"error": "slots must be a non-empty list"}, status=400)
+
 
         try:
             with transaction.atomic():
@@ -215,13 +213,11 @@ class AddSlotView(APIView):
         if not slot_group:
             return Response({"error": f"SlotGroup with uuid {slot_uuid} not found"}, status=404)
 
-        try:
-            slots = json.loads(request.data.get("slots", "[]"))
-        except json.JSONDecodeError:
-            return Response({"error": "slots is not valid JSON"}, status=400)
-
+        slots = request.data.get("slots", [])
+        
         if not isinstance(slots, list) or not slots:
             return Response({"error": "slots must be a non-empty list"}, status=400)
+
 
         try:
             with transaction.atomic():
