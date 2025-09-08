@@ -192,6 +192,20 @@ class PriceSlotSerializer(serializers.ModelSerializer):
                 raise ValidationError(f"{field} is required.")
         if data['start_time'] >= data['end_time']:
             raise ValidationError("start_time must be less than end_time.")
+        
+        slot_group = self.instance.slot_group if self.instance else data.get('slot_group')
+        overlaps = PriceSlot.objects.filter(
+            days=data['days'], slot_group=slot_group
+        ).exclude(
+            id=self.instance.id if self.instance else None
+        ).filter(
+            start_time__lt=data['end_time'],
+            end_time__gt=data['start_time']
+        )
+
+        if overlaps.exists():
+            raise ValidationError("Slot overlaps with an existing slot in this group.")
+        
         return data
 
 
@@ -209,7 +223,7 @@ class SlotGroupCreateSerializer(serializers.ModelSerializer):
 
         with transaction.atomic():
             slot_group = SlotGroup.objects.create(
-                created_by=user  # Removed slot_number
+                created_by=user, **validated_data
             )
             for slot in slots_data:
                 PriceSlot.objects.create(
@@ -228,34 +242,57 @@ class SlotGroupLinkSerializer(serializers.ModelSerializer):
 
 
 class PriceListCreateSerializer(serializers.ModelSerializer):
-    slot_groups = SlotGroupLinkSerializer(many=True, write_only=True)
+    # Accept list of UUIDs instead of nested serializer
+    slot_group_uuids = serializers.ListField(
+        child=serializers.UUIDField(), write_only=True
+    )
+
 
     class Meta:
         model = PriceList
-        fields = ['id', 'uuid', 'name', 'start_time', 'end_time', 'is_active', 'created_at', 'updated_at', 'slot_groups', 'created_by']
+        fields = [
+            'id', 'uuid', 'name', 'default',
+            'start_time', 'end_time', 'is_active',
+            'created_at', 'updated_at', 'slot_group_uuids', 'created_by'
+        ]
         read_only_fields = ['id', 'uuid', 'created_by', 'created_at', 'updated_at']
 
     def validate(self, data):
-        if data['start_time'] >= data['end_time']:
+        start_time = data.get('start_time')
+        end_time = data.get('end_time')
+        if start_time and end_time and start_time >= end_time:
             raise ValidationError("start_time must be less than end_time.")
+        
+        print("DEBUG slot_group_uuids =>", data.get('slot_group_uuids'))
+        
+        if not data.get('slot_group_uuids'):
+            raise ValidationError("At least one slot group UUID must be provided.")
         return data
 
     def create(self, validated_data):
         user = self.context['request'].user
-        slot_groups_data = validated_data.pop('slot_groups', [])
+        slot_group_uuids = validated_data.pop('slot_group_uuids')
 
-        if not slot_groups_data:
-            raise ValidationError("At least one slot group must be linked.")
+        try:
+            with transaction.atomic():
+                # Step 1: Create PriceList
+                price_list = PriceList.objects.create(created_by=user, **validated_data)
 
-        with transaction.atomic():
-            price_list = PriceList.objects.create(created_by=user, **validated_data)
+                # Step 2: Get SlotGroups owned by user
+                slot_groups = SlotGroup.objects.filter(uuid__in=slot_group_uuids, created_by=user)
 
-            for group in slot_groups_data:
-                slot_group = SlotGroup.objects.filter(uuid=group['uuid'], created_by=user).first()
-                if not slot_group:
-                    raise ValidationError(f"SlotGroup with UUID {group['uuid']} not found or not owned by user.")
-                slot_group.price_list = price_list
-                slot_group.save()
+                # Step 3: Validate all SlotGroups exist
+                if slot_groups.count() != len(slot_group_uuids):
+                    raise ValidationError("Some SlotGroups not found or not owned by the user.")
 
-        return price_list
+                # Step 4: Attach PriceList to SlotGroups
+                updated_count = slot_groups.update(price_list=price_list)
 
+                if updated_count != len(slot_group_uuids):
+                    raise ValidationError("Failed to attach all SlotGroups to PriceList.")
+
+                return price_list
+            
+        except Exception as e:
+            # Any error → rollback will happen automatically
+            raise ValidationError(f"PriceList creation failed: {str(e)}")

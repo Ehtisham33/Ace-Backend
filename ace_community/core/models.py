@@ -1,6 +1,7 @@
 from types import MappingProxyType
 from django.db import models
 from django.core.validators import MaxLengthValidator, MinValueValidator, MaxValueValidator
+from django.core.exceptions import ValidationError
 
 import uuid
 
@@ -8,11 +9,23 @@ from django.db.models import fields, indexes
 
 from laravel_models.models import Users, Sports, Clubs
 
+def generate_uuid_with_dash():
+    """Generate UUID string with dashes (standard format)."""
+    return str(uuid.uuid4())
+
+class UUIDWithDashField(models.CharField):
+    def __init__(self, *args, **kwargs):
+        kwargs['max_length'] = 36
+        kwargs['default'] = generate_uuid_with_dash   # lambda hata diya
+        kwargs['unique'] = True
+        kwargs['editable'] = False
+        super().__init__(*args, **kwargs)
+
 
 class ClubCourt(models.Model):
 
     id = models.BigAutoField(primary_key=True)
-    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    uuid = UUIDWithDashField()
     club = models.ForeignKey(Clubs, on_delete=models.CASCADE)
     name = models.CharField(max_length=30,blank=False)
     surface_type = models.CharField(max_length=15, choices=[
@@ -82,7 +95,7 @@ class ClubCourt(models.Model):
 
 class CourtSlotDuration(models.Model):
     id = models.BigAutoField(primary_key=True)
-    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    uuid = UUIDWithDashField()
     club_court = models.ForeignKey(ClubCourt, on_delete=models.CASCADE)
     duration = models.IntegerField(validators=[MinValueValidator(50),MaxValueValidator(320)],null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -110,11 +123,12 @@ class CourtSlotDuration(models.Model):
 
 class PriceList(models.Model):
     id = models.BigAutoField(primary_key=True)
-    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
-    name = models.CharField(max_length=35 , null=False ,blank=False, unique=True)
-    start_time = models.DateTimeField(null=True, blank=True, unique= True)
-    end_time = models.DateTimeField(null=True, blank=True , unique= True)
+    uuid = UUIDWithDashField()
+    name = models.CharField(max_length=36 , null=False ,blank=False, unique=True)
+    start_time = models.DateField(null=True, blank=True, unique= True)
+    end_time = models.DateField(null=True, blank=True , unique= True)
     is_active = models.BooleanField(default=True)
+    default = models.BooleanField(default=False)    
     created_by = models.ForeignKey(Users, on_delete=models.CASCADE, null = True , blank = True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at =models.DateTimeField(auto_now=True, null=True, blank= True)
@@ -140,7 +154,7 @@ class PriceList(models.Model):
 
 class SlotGroup(models.Model):
     id = models.BigAutoField(primary_key=True)
-    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    uuid = UUIDWithDashField()
     price_list = models.ForeignKey(PriceList, on_delete=models.CASCADE, related_name="slot_groups", null = True , blank=True)
     created_by = models.ForeignKey(Users, on_delete=models.CASCADE, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -160,7 +174,7 @@ class SlotGroup(models.Model):
 
 class PriceSlot(models.Model):
     id = models.BigAutoField(primary_key=True)
-    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    uuid = UUIDWithDashField()
     slot_group = models.ForeignKey(SlotGroup, on_delete=models.CASCADE , null=True , blank=True)
     is_checked = models.BooleanField(default=False)
     days = models.CharField(choices=[
@@ -179,6 +193,22 @@ class PriceSlot(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True , null=True, blank = True)
 
+    def clean(self):
+        """Custom validation to prevent overlapping time slots"""
+        if self.start_time and self.end_time:
+            overlaps = PriceSlot.objects.filter(
+                days=self.days
+            ).exclude(id=self.id).filter(
+                start_time__lt=self.end_time,
+                end_time__gt=self.start_time
+            )
+            if overlaps.exists():
+                raise ValidationError("This time slot overlaps with an existing slot.")
+    
+    def save(self, *args, **kwargs):
+        self.clean()  
+        super().save(*args, **kwargs)
+
     def __str__(self):
         pl_name = self.slot_group.price_list.name if self.slot_group and self.slot_group.price_list else "No Price List"
         
@@ -187,6 +217,12 @@ class PriceSlot(models.Model):
     
     class Meta:
         managed = True
+        constraints = [
+            models.UniqueConstraint(
+                fields=['days', 'start_time', 'end_time'],
+                name='unique_day_time_slot'
+            )
+        ]
         ordering = ['created_at']
         db_table ='price_slot'
         indexes = [
@@ -201,7 +237,7 @@ class PriceSlot(models.Model):
 
 class CourtSlotPrice(models.Model):
     id = models.BigAutoField(primary_key=True)
-    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    uuid = UUIDWithDashField()
     club_court = models.ForeignKey(ClubCourt, on_delete=models.CASCADE)
     price_slot_group = models.ForeignKey(SlotGroup, on_delete= models.CASCADE, related_name= 'court_slot_price', null=True, blank=True)
     enforce_slot_start_time = models.BooleanField(default=False)

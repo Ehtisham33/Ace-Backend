@@ -24,7 +24,8 @@ from core.models import (
 
 from core.serializers import (
     ClubAddCourtSerializer,
-    PriceSlotSerializer
+    PriceSlotSerializer,
+    PriceListCreateSerializer
 )
 
 # Create your views here.
@@ -230,3 +231,92 @@ class AddSlotView(APIView):
         except Exception as e:
             return Response({"error": f"Failed to delete: {e}"}, status=400)
 
+
+class PriceListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        uuid = request.query_params.get("uuid")
+
+        if uuid:
+            price_list = PriceList.objects.filter(uuid=uuid, created_by=user).first()
+            if not price_list:
+                return Response({"error": "PriceList not found"}, status=404)
+            
+            data = []
+            slot_groups = SlotGroup.objects.filter(price_list=price_list, created_by=user)
+            data.append({
+                "uuid": str(price_list.uuid),
+                "name": price_list.name,
+                "default": price_list.default,
+                "start_time": str(price_list.start_time),
+                "end_time": str(price_list.end_time),
+                "is_active": price_list.is_active,
+                "slot_groups": [str(sg.uuid) for sg in slot_groups],
+            })
+            return Response({"message": "Price lists fetched successfully", "data": data}, status=200)
+
+        price_lists = PriceList.objects.filter(created_by=user).order_by("-created_at")
+        data = []
+        for plist in price_lists:
+            slot_groups = SlotGroup.objects.filter(price_list=plist, created_by=user)
+            data.append({
+                "uuid": str(plist.uuid),
+                "name": plist.name,
+                "default": plist.default,
+                "start_time": str(plist.start_time),
+                "end_time": str(plist.end_time),
+                "is_active": plist.is_active,
+                "slot_groups": [str(sg.uuid) for sg in slot_groups],
+            })
+        return Response({"message": "Price lists fetched successfully", "data": data}, status=200)
+
+    def post(self, request):
+        serializer = PriceListCreateSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            price_list = serializer.save()
+            return Response({
+                "message": "Price list created successfully",
+                "data": serializer.data
+            }, status=201)
+        else:
+            return Response({"error": serializer.errors}, status=400)
+
+    def put(self, request):
+        user = request.user
+        uuid = request.query_params.get("uuid")
+        if not uuid:
+            return Response({"error": "PriceList uuid is required"}, status=400)
+
+        price_list = PriceList.objects.filter(uuid=uuid, created_by=user).first()
+        if not price_list:
+            return Response({"error": "PriceList not found"}, status=404)
+
+        serializer = PriceListCreateSerializer(instance=price_list, data=request.data, partial=True, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "message": "Price list updated successfully",
+                "data": serializer.data
+            }, status=200)
+        else:
+            return Response({"error": serializer.errors}, status=400)
+
+    def delete(self, request):
+        user = request.user
+        uuid = request.query_params.get("uuid")
+        if not uuid:
+            return Response({"error": "PriceList uuid is required"}, status=400)
+
+        price_list = PriceList.objects.filter(uuid=uuid, created_by=user).first()
+        if not price_list:
+            return Response({"error": "PriceList not found"}, status=404)
+
+        try:
+            with transaction.atomic():
+                SlotGroup.objects.filter(price_list=price_list).update(price_list=None)
+                price_list.delete()
+            return Response({"message": "PriceList deleted successfully"}, status=200)
+        except Exception as e:
+            return Response({"error": f"Failed to delete PriceList: {e}"}, status=400)
