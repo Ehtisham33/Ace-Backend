@@ -219,8 +219,8 @@ class PriceSlot(models.Model):
         managed = True
         constraints = [
             models.UniqueConstraint(
-                fields=['days', 'start_time', 'end_time'],
-                name='unique_day_time_slot'
+                fields=['slot_group', 'days', 'start_time', 'end_time'],  # ✅ SCOPED to group
+                name='unique_slot_per_group'
             )
         ]
         ordering = ['created_at']
