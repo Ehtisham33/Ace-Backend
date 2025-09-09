@@ -11,6 +11,7 @@ from rest_framework.decorators import action
 from django.db import transaction
 
 import json
+from collections import defaultdict
 
 from laravel_models.models import Users , Clubs, Players
 from core.models import (
@@ -139,13 +140,23 @@ class AddSlotView(APIView):
             return Response({"error": "SlotGroup not found"}, status=404)
 
         slots = PriceSlot.objects.filter(slot_group=slot_group).order_by("days", "start_time")
-        slot_serializer = PriceSlotSerializer(slots, many=True)
+
+        grouped_slots = defaultdict(list)
+        for slot in slots:
+            grouped_slots[slot.days].append({
+                "id": slot.id,
+                "uuid": str(slot.uuid),
+                "interval_number": slot.interval_number,
+                "start_time": slot.start_time.strftime("%H:%M:%S"),
+                "end_time": slot.end_time.strftime("%H:%M:%S"),
+                "is_checked": slot.is_checked
+            })
 
         return Response({
             "message": "Slot group fetched successfully",
             "data": {
                 "slot_group_uuid": str(slot_group.uuid),
-                "slots": slot_serializer.data
+                "slots": grouped_slots  # 🧠 Now grouped by day
             }
         }, status=200)
 
@@ -182,20 +193,22 @@ class AddSlotView(APIView):
                 saved_slots = PriceSlot.objects.filter(slot_group=slot_group).order_by("days", "start_time")
                 slot_serializer = PriceSlotSerializer(saved_slots, many=True)
 
+                grouped_slots = defaultdict(list)
+                for slot in saved_slots:
+                    grouped_slots[slot.days].append({
+                        "id": slot.id,
+                        "uuid": str(slot.uuid),
+                        "interval_number": slot.interval_number,
+                        "start_time": slot.start_time.strftime("%H:%M:%S"),
+                        "end_time": slot.end_time.strftime("%H:%M:%S"),
+                        "is_checked": slot.is_checked
+                    })
+
                 return Response({
                     "message": "Slot group created successfully",
                     "data": {
                         "slot_group_uuid": str(slot_group.uuid),
-                        "slots": [
-                            {
-                                "days": slot["days"],
-                                "interval_number": slot["interval_number"],
-                                "start_time": slot["start_time"][:5],
-                                "end_time": slot["end_time"][:5],
-                                "is_checked": slot["is_checked"]
-                            }
-                            for slot in slot_serializer.data
-                        ]
+                        "slots": grouped_slots
                     }
                 }, status=201)
 
@@ -243,22 +256,24 @@ class AddSlotView(APIView):
                 saved_slots = PriceSlot.objects.filter(slot_group=slot_group).order_by("days", "start_time")
                 slot_serializer = PriceSlotSerializer(saved_slots, many=True)
 
+                grouped_slots = defaultdict(list)
+                for slot in saved_slots:
+                    grouped_slots[slot.days].append({
+                        "id": slot.id,
+                        "uuid": str(slot.uuid),
+                        "interval_number": slot.interval_number,
+                        "start_time": slot.start_time.strftime("%H:%M:%S"),
+                        "end_time": slot.end_time.strftime("%H:%M:%S"),
+                        "is_checked": slot.is_checked
+                    })
+
                 return Response({
-                    "message": "Slot group updated successfully",
+                    "message": "Slot group created successfully",
                     "data": {
                         "slot_group_uuid": str(slot_group.uuid),
-                        "slots": [
-                            {
-                                "days": slot["days"],
-                                "interval_number": slot["interval_number"],
-                                "start_time": slot["start_time"][:5],
-                                "end_time": slot["end_time"][:5],
-                                "is_checked": slot["is_checked"]
-                            }
-                            for slot in slot_serializer.data
-                        ]
+                        "slots": grouped_slots
                     }
-                }, status=200)
+                }, status=201)
 
         except Exception as e:
             return Response({"error": f"Slot group update failed: {str(e)}"}, status=400)
