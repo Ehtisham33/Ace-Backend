@@ -194,16 +194,17 @@ class PriceSlot(models.Model):
     updated_at = models.DateTimeField(auto_now=True , null=True, blank = True)
 
     def clean(self):
-        """Custom validation to prevent overlapping time slots"""
-        if self.start_time and self.end_time:
+        """Custom validation to prevent overlapping time slots within the same slot group"""
+        if self.start_time and self.end_time and self.slot_group:
             overlaps = PriceSlot.objects.filter(
+                slot_group=self.slot_group,  # ✅ only check within same group
                 days=self.days
             ).exclude(id=self.id).filter(
                 start_time__lt=self.end_time,
                 end_time__gt=self.start_time
             )
             if overlaps.exists():
-                raise ValidationError("This time slot overlaps with an existing slot.")
+                raise ValidationError("This time slot overlaps with an existing slot in the same group.")
     
     def save(self, *args, **kwargs):
         self.clean()  
