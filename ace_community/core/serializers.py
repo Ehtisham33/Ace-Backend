@@ -44,7 +44,8 @@ class ClubAddCourtSerializer(serializers.ModelSerializer):
         read_only_fields = ['id','uuid','club','created_by','created_at','updated_at']
 
     def get_slot_durations(self, obj):
-        return list(obj.courtslotduration_set.values_list('duration', flat=True))
+        durations = obj.courtslotduration_set.all()
+        return self.SlotDurationSerializer(durations, many=True).data
     
     def validate_court_image(self, image):
         if image and image.size > MAX_IMAGE_SIZE_MB * 1024 * 1024:
