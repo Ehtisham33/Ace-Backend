@@ -27,7 +27,7 @@ class ClubAddCourtSerializer(serializers.ModelSerializer):
     class SlotDurationSerializer(serializers.ModelSerializer):
         class Meta:
             model = CourtSlotDuration
-            fields = ['duration']
+            fields = ['id','uuid','duration']
 
     slot_durations_input = serializers.JSONField(write_only=True)
     slot_durations = serializers.SerializerMethodField()
